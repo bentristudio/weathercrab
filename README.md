@@ -5,8 +5,9 @@ A tiny weather app: a little crab checks the forecast and puts on the right laye
 Idea from [@pauline_makes](https://x.com/pauline_makes/status/2042608561197297942)' weather bunny.
 
 - Live 8-day forecasts (yesterday + the next 7 days) from [Open-Meteo](https://open-meteo.com). No API key needed.
-- Search any city, or use your location.
+- Search any city, or use your location. The header then shows the town you're in underneath, like "my location (delray beach)". Town names come from [BigDataCloud](https://www.bigdatacloud.com)'s free reverse-geocoding API.
 - 220 places are saved in the page (every US state capital, the biggest US cities, more cities in California, Florida, New York and Texas, and a few world cities including Niamey, Niger). They load instantly and serve as a fallback forecast if the weather service can't be reached.
+- An hourly strip under the high and low. Tap any hour and the crab dresses for that hour (today starts on "now"; at night it skips the sunglasses and the glow dims).
 - The crab moves with the weather: it shivers in the cold, scuttles when it's mild, hops in the sun, melts in the heat and leans into the wind.
 - At 100°F and up it changes into a swimsuit and sunglasses.
 - When it's raining, drizzling, snowing or storming, it says how long for, like "thunderstorm for the next 23 minutes" (15-minute forecast data for the next few hours, hourly after that).
