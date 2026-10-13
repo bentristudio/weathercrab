@@ -9,4 +9,5 @@
   </g>
   <rect x="72" y="94" width="12" height="24" rx="2" fill="#2b2522"/>
   <rect x="156" y="94" width="12" height="24" rx="2" fill="#2b2522"/>
+  <path d="M108 105 Q120 116 132 105" fill="none" stroke="#2b2522" stroke-width="6" stroke-linecap="round"/>
 </svg>

@@ -7,7 +7,10 @@ Idea from [@pauline_makes](https://x.com/pauline_makes/status/204260856119729794
 - Live 8-day forecasts (yesterday + the next 7 days) from [Open-Meteo](https://open-meteo.com). No API key needed.
 - Search any city, or use your location.
 - 219 places are saved in the page (every US state capital, the biggest US cities, more cities in California, Florida, New York and Texas, and a few world cities). They load instantly and serve as a fallback forecast if the weather service can't be reached.
-- °F / °C toggle, swipe or arrow keys between days, and a widget preview.
+- The crab moves with the weather: it shivers in the cold, scuttles when it's mild, hops in the sun, melts in the heat and leans into the wind.
+- Over 100°F it changes into a swimsuit and sunglasses.
+- When it's raining, drizzling, snowing or storming, it says how long for, like "thunderstorm for the next 23 minutes" (15-minute forecast data for the next few hours, hourly after that).
+- °F / °C switch, swipe or arrow keys between days, and a widget preview.
 
 It is one static `index.html` with no build step and no dependencies.
 
