@@ -85,6 +85,31 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
   transition: background-color .2s;
 }
 .round:hover { background: var(--chip-hover); }
+.top-left { display: flex; align-items: center; gap: 6px; }
+.install { position: relative; }
+.install .crab-glyph { width: 20px; height: 14px; }
+.install .badge {
+  position: absolute; right: -3px; bottom: -3px;
+  width: 14px; height: 14px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--ink); color: var(--bg);
+  font-size: 12px; font-weight: 700; line-height: 1;
+}
+.install-app { display: flex; align-items: center; gap: 14px; padding: 4px 2px; }
+.install-app .icon { width: 60px; height: 60px; flex: none; border-radius: 14px; background: var(--widget); display: grid; place-items: center; overflow: hidden; }
+.install-app .icon svg { width: 86%; height: 86%; }
+.install-app b { display: block; font-size: 16px; }
+.install-app small { font-size: 13px; color: var(--muted); }
+.steps { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; counter-reset: step; }
+.steps li { counter-increment: step; display: flex; align-items: center; gap: 12px; font-size: 15px; line-height: 1.35; }
+.steps li::before {
+  content: counter(step); flex: none;
+  width: 26px; height: 26px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--chip); color: var(--ink); font-weight: 700; font-size: 13px;
+}
+.steps .ic { display: inline-grid; place-items: center; vertical-align: -4px; width: 22px; height: 22px; border-radius: 6px; background: var(--chip); margin-inline: 2px; }
+.steps .ic svg { width: 14px; height: 14px; }
 .round svg { width: 15px; height: 15px; }
 .units { justify-self: end; display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--chip); }
 .units button { font-size: 12px; font-weight: 700; line-height: 1; color: var(--muted); padding: 6px 8px; border-radius: 999px; transition: background-color .2s, color .2s; }
@@ -393,9 +418,15 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
 
 <main class="app" id="app">
   <header class="top">
-    <button class="round" id="widgetBtn" aria-label="widget preview" title="widget preview">
-      <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1.8"/><rect x="9" y="1" width="6" height="6" rx="1.8"/><rect x="1" y="9" width="6" height="6" rx="1.8"/><rect x="9" y="9" width="6" height="6" rx="1.8"/></svg>
-    </button>
+    <div class="top-left">
+      <button class="round" id="widgetBtn" aria-label="widget preview" title="widget preview">
+        <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1.8"/><rect x="9" y="1" width="6" height="6" rx="1.8"/><rect x="1" y="9" width="6" height="6" rx="1.8"/><rect x="9" y="9" width="6" height="6" rx="1.8"/></svg>
+      </button>
+      <button class="round install" id="installBtn" hidden aria-label="add weathercrab to your home screen" title="add to home screen">
+        <svg class="crab-glyph" viewBox="10 54 220 150" aria-hidden="true"><g fill="#d97757" stroke="#2b2522" stroke-width="12" stroke-linejoin="round"><rect x="60" y="150" width="12" height="40" rx="2"/><rect x="84" y="150" width="12" height="40" rx="2"/><rect x="144" y="150" width="12" height="40" rx="2"/><rect x="168" y="150" width="12" height="40" rx="2"/><rect x="18" y="118" width="204" height="24" rx="4"/><rect x="48" y="70" width="144" height="96" rx="6"/></g><rect x="72" y="94" width="14" height="26" rx="3" fill="#2b2522"/><rect x="154" y="94" width="14" height="26" rx="3" fill="#2b2522"/></svg>
+        <span class="badge" aria-hidden="true">+</span>
+      </button>
+    </div>
     <button class="city" id="cityBtn" aria-haspopup="dialog">
       <span class="city-row">
         <svg class="pin" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 3 3 10.5l7.6 2.9L13.5 21z"/></svg>
@@ -453,6 +484,16 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
     <button class="loc-btn" id="locBtn" hidden><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 3 3 10.5l7.6 2.9L13.5 21z"/></svg>use my location</button>
     <ul class="list" id="cityList"></ul>
     <p class="sheet-note" id="cityMsg"></p>
+  </div>
+</div>
+
+<div class="sheet-wrap" id="installSheet" hidden>
+  <div class="backdrop" data-close></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="installTitle">
+    <div class="grab"></div>
+    <div class="sheet-head"><h2 id="installTitle">put weathercrab on your phone</h2><button class="round" data-close aria-label="close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="install-app"><div class="icon" id="installIcon"></div><div><b>weathercrab</b><small>opens full screen from your home screen, like an app</small></div></div>
+    <ol class="steps" id="installSteps"></ol>
   </div>
 </div>
 
@@ -1330,6 +1371,44 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
       if (km < bestKm) { bestKm = km; best = c; }
     }
     return best && bestKm < 60 ? `near ${best.name}` : "";
+  }
+
+  /* ---------- add to home screen ---------- */
+  const installBtn = $("#installBtn");
+  const framed = (() => { try { return window.top !== window.self; } catch (e) { return true; } })();
+  const installed = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const onPhone = matchMedia("(pointer: coarse)").matches;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  let installPrompt = null;
+  function updateInstall() { installBtn.hidden = framed || installed() || !(onPhone || installPrompt); }
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installPrompt = e; updateInstall(); });
+  window.addEventListener("appinstalled", () => { installPrompt = null; installBtn.hidden = true; closeSheet(); });
+  updateInstall();
+  const SHARE_IC = `<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span>`;
+  const PLUS_IC = `<span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/></svg></span>`;
+  const MENU_IC = `<span class="ic"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5.5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="18.5" r="2"/></svg></span>`;
+  installBtn.addEventListener("click", async () => {
+    if (installPrompt) {
+      const p = installPrompt;
+      installPrompt = null;
+      p.prompt();
+      try { await p.userChoice; } catch (e) {}
+      updateInstall();
+      return;
+    }
+    $("#installIcon").innerHTML = crabSVG({ tier: "sweater", rain: false, snow: false, sunny: false }, { flat: true });
+    $("#installSteps").innerHTML = isIOS
+      ? `<li><span>tap the share button ${SHARE_IC} in your browser's toolbar</span></li>
+         <li><span>scroll down and tap ${PLUS_IC} <b>Add to Home Screen</b></span></li>
+         <li><span>tap <b>Add</b>. the crab lands on your home screen</span></li>`
+      : `<li><span>open your browser's menu ${MENU_IC}</span></li>
+         <li><span>tap <b>Install app</b> or <b>Add to Home screen</b></span></li>
+         <li><span>tap <b>Install</b>. the crab lands on your home screen</span></li>`;
+    showSheet($("#installSheet"));
+  });
+  /* the offline-ready service worker lives next to index.html on the real site */
+  if ("serviceWorker" in navigator && !framed && location.protocol === "https:") {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
   }
 
   /* widget sheet */

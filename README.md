@@ -12,6 +12,7 @@ Idea from [@pauline_makes](https://x.com/pauline_makes/status/204260856119729794
 - At 100°F and up it changes into a swimsuit and sunglasses. At 0°F and below it wears every layer it owns: a fur-hooded parka over a puffer, a chunky scarf, big mittens and fur-lined snow boots.
 - When it's raining, drizzling, snowing or storming, it says how long for, like "thunderstorm for the next 23 minutes" (15-minute forecast data for the next few hours, hourly after that).
 - °F / °C switch, swipe or arrow keys between days, and a widget preview.
+- On phones, the crab button at the top adds weathercrab to the home screen: Android shows its install prompt, iPhone gets three quick steps (Share → Add to Home Screen → Add). It opens full screen like an app and still opens offline.
 
 It is one static `index.html` with no build step and no dependencies.
 
@@ -24,6 +25,7 @@ It is one static `index.html` with no build step and no dependencies.
 | `apple-touch-icon.png` | Icon when added to an iPhone home screen |
 | `icon-192.png`, `icon-512.png` | Icons for Android and installed web apps |
 | `site.webmanifest` | Lets the site be added to a home screen as an app |
+| `sw.js` | Service worker: makes the site installable on Android and lets it open offline |
 
 ## Deploy
 
