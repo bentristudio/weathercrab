@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="A little crab checks the forecast and dresses in the right layers for the weather.">
+<meta name="theme-color" content="#f2eee8">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="weathercrab">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta property="og:title" content="weathercrab">
+<meta property="og:description" content="A little crab checks the forecast and dresses in the right layers for the weather.">
+<meta property="og:type" content="website">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<style>
+html { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+</style>
+<title>weathercrab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap">
+<style>
+/* layout: one phone-width column — header, the crab on a soft weather glow, a swipeable day strip, one pill button.
+   single light theme on purpose: the app is a paper-and-marker world, like the original. */
+:root {
+  color-scheme: light;
+  --bg: #f2eee8;
+  --ink: #3a3531;
+  --muted: #8d867f;
+  --faint: #bcb5ad;
+  --chip: #e6e0d8;
+  --chip-hover: #ddd6cd;
+  --sheet: #f8f5f0;
+  --line: #e5dfd7;
+  --scrim: rgba(58, 53, 49, .28);
+  --wall-a: #8e9c7c;
+  --wall-b: #76866a;
+  --widget: #f4f0ea;
+  --focus: #6f93b8;
+  --font: "Comic Neue", "Comic Sans MS", "Chalkboard SE", "Comic Sans", cursive;
+  --day-h: 166px;
+}
+[hidden] { display: none !important; }
+@property --glow { syntax: "<color>"; inherits: true; initial-value: #cfe0ef; }
+
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 10px; }
+
+.app {
+  position: relative;
+  height: 100%;
+  min-height: 560px;
+  max-height: 960px;
+  max-width: 430px;
+  margin: 0 auto;
+  padding-inline: 16px;
+  padding-block: 12px 18px;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* header */
+.top { display: grid; grid-template-columns: 36px 1fr 36px; align-items: center; height: 40px; }
+.round {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--chip); color: var(--muted);
+  font-size: 13px; font-weight: 700;
+  transition: background-color .2s;
+}
+.round:hover { background: var(--chip-hover); }
+.round svg { width: 15px; height: 15px; }
+#unitBtn { justify-self: end; letter-spacing: .02em; }
+.city {
+  justify-self: center;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-weight: 700; font-size: 17px; color: var(--muted);
+  padding: 6px 10px; border-radius: 12px;
+  max-width: 100%; min-width: 0;
+}
+.city span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.city .pin { width: 11px; height: 11px; flex: none; }
+.city .chev { width: 11px; height: 11px; flex: none; }
+.city:hover { color: var(--ink); }
+
+/* stage */
+.main {
+  position: relative; flex: 1; min-height: 0;
+  --cat-h: clamp(210px, 42vh, 360px);
+  --stack-h: calc(var(--cat-h) + var(--day-h) + 60px);
+  --y0: max(0px, calc(46% - var(--stack-h) / 2));
+}
+.cat-layer {
+  position: absolute; left: 0; right: 0; top: var(--y0); height: var(--cat-h);
+  display: grid; place-items: center;
+  pointer-events: none;
+}
+.glow {
+  position: absolute; left: 50%; top: 50%;
+  width: min(92%, var(--cat-h)); aspect-ratio: 1;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--glow) 0%, var(--glow) 42%, color-mix(in srgb, var(--glow) 0%, transparent) 100%);
+  filter: blur(6px);
+  transition: --glow .8s ease;
+}
+.fx {
+  position: absolute; left: 50%; top: 50%;
+  width: min(92%, var(--cat-h)); aspect-ratio: 1;
+  translate: -50% -50%;
+  -webkit-mask-image: radial-gradient(closest-side, #000 45%, transparent 95%);
+  mask-image: radial-gradient(closest-side, #000 45%, transparent 95%);
+}
+.cat-stack { position: relative; height: calc(var(--cat-h) * .58); aspect-ratio: 240 / 200; max-width: 100%; }
+.holder { position: absolute; inset: 0; opacity: 0; transform: translateY(6px) scale(.97); transition: opacity .38s ease, transform .38s ease; }
+.holder.on { opacity: 1; transform: none; }
+.holder svg { width: 100%; height: 100%; display: block; overflow: visible; }
+
+/* crab idle motion */
+.crab .eyes { transform-box: fill-box; transform-origin: center; animation: blink 5.5s infinite; }
+.crab .breathe { transform-box: view-box; transform-origin: 120px 195px; animation: breathe 3.4s ease-in-out infinite; }
+@keyframes blink { 0%, 93%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.12); } }
+@keyframes breathe { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(1.02); } }
+
+/* swipeable days */
+.track {
+  position: absolute; inset: 0;
+  display: flex;
+  overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+.track::-webkit-scrollbar { display: none; }
+.slide {
+  position: relative;
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always;
+}
+.day {
+  position: absolute; left: 0; right: 0;
+  top: calc(var(--y0) + var(--cat-h));
+  height: var(--day-h);
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center;
+}
+.day-name { font-weight: 700; font-size: 20px; line-height: 26px; }
+.day-date { font-size: 12px; line-height: 16px; color: var(--muted); margin-top: 2px; }
+.temps {
+  height: 64px; margin-top: 8px;
+  display: flex; align-items: baseline; justify-content: center; gap: 6px;
+  font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.hi { font-size: 54px; line-height: 64px; letter-spacing: -.01em; }
+.sep { font-size: 26px; color: var(--faint); font-weight: 400; }
+.lo { font-size: 32px; color: var(--muted); }
+.cond { font-size: 14px; line-height: 20px; color: var(--muted); margin-top: 4px; }
+.wind { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; line-height: 18px; color: var(--faint); margin-top: 2px; }
+.wind svg { width: 12px; height: 12px; }
+
+.nav {
+  position: absolute; top: calc(var(--y0) + var(--cat-h) + 68px);
+  width: 28px; height: 36px;
+  display: grid; place-items: center;
+  color: var(--faint);
+  z-index: 2;
+  transition: opacity .2s, color .2s;
+}
+.nav:hover { color: var(--muted); }
+.nav svg { width: 14px; height: 14px; }
+.nav[disabled] { opacity: 0; pointer-events: none; }
+#prevBtn { left: -10px; }
+#nextBtn { right: -10px; }
+
+.more { position: absolute; left: 50%; translate: -50% 0; top: calc(var(--y0) + var(--cat-h) + var(--day-h) + 12px); z-index: 2; white-space: nowrap; }
+.foot { display: flex; justify-content: center; padding-top: 6px; }
+.pill {
+  background: var(--chip); color: var(--muted);
+  font-weight: 700; font-size: 13px;
+  padding: 10px 22px; border-radius: 999px;
+  transition: background-color .2s, color .2s;
+}
+.pill:hover { background: var(--chip-hover); color: var(--ink); }
+.note { font-size: 11px; color: var(--faint); margin: 0; min-height: 15px; text-align: center; }
+.note a { color: inherit; }
+
+/* sheets */
+.sheet-wrap { position: fixed; inset: 0; z-index: 10; display: flex; align-items: flex-end; justify-content: center; }
+.backdrop { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity .25s ease; }
+.sheet {
+  position: relative;
+  width: 100%; max-width: 430px; max-height: 82%;
+  box-sizing: border-box;
+  background: var(--sheet);
+  border-radius: 26px 26px 0 0;
+  padding-inline: 18px;
+  padding-block: 14px calc(18px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; gap: 12px;
+  transform: translateY(104%);
+  transition: transform .32s cubic-bezier(.2, .8, .2, 1);
+  box-shadow: 0 -8px 30px rgba(58, 53, 49, .12);
+}
+.sheet-wrap.open .backdrop { opacity: 1; }
+.sheet-wrap.open .sheet { transform: none; }
+.grab { width: 38px; height: 4px; border-radius: 4px; background: var(--line); align-self: center; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; }
+.sheet-head h2 { margin: 0; font-size: 18px; font-weight: 700; }
+.list { list-style: none; margin: 0; padding: 0; overflow-y: auto; min-height: 0; display: flex; flex-direction: column; }
+.list li:not(.sec) + li:not(.sec) { border-top: 1px dashed var(--line); }
+.list .sec { position: sticky; top: 0; z-index: 1; background: var(--sheet); font-size: 12px; font-weight: 700; color: var(--faint); letter-spacing: .06em; padding: 12px 6px 4px; }
+#citySheet .sheet { height: 82%; }
+.row {
+  width: 100%; text-align: left;
+  display: grid; align-items: center; gap: 12px;
+  padding: 8px 6px; border-radius: 12px;
+}
+.row:hover { background: var(--chip); }
+.row.sel { background: var(--chip); }
+.date-row { grid-template-columns: 44px 1fr auto; }
+.date-row .mini { width: 44px; height: 37px; }
+.date-row .mini svg { width: 100%; height: 100%; display: block; }
+.row b { font-size: 15px; display: block; }
+.row small { font-size: 12px; color: var(--muted); }
+.row .t { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 15px; white-space: nowrap; }
+.row .t span { color: var(--muted); font-size: 13px; }
+.city-row { grid-template-columns: 1fr auto; }
+.city-row small { display: block; }
+.city-row .t { font-size: 14px; color: var(--muted); font-weight: 400; }
+.search {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--chip); border-radius: 14px;
+  padding: 10px 12px; color: var(--muted);
+}
+.search svg { width: 15px; height: 15px; flex: none; }
+.search input { border: 0; background: transparent; font: inherit; font-size: 16px; color: var(--ink); width: 100%; min-width: 0; outline: none; }
+.search input::placeholder { color: var(--faint); }
+.loc-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-weight: 700; font-size: 14px; padding: 4px 6px; align-self: flex-start; }
+.loc-btn svg { width: 12px; height: 12px; }
+.sheet-note { font-size: 12px; color: var(--muted); margin: 0; text-align: center; }
+
+/* widget preview */
+.home {
+  border-radius: 22px;
+  background: linear-gradient(170deg, var(--wall-a), var(--wall-b));
+  padding: 18px 16px 16px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px;
+}
+.w { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+.w label { font-size: 11px; color: #f4f1ea; font-weight: 700; }
+.w-medium { grid-column: 1 / -1; }
+.wbox {
+  position: relative; width: 100%;
+  background: var(--widget); border-radius: 20px;
+  overflow: hidden;
+  display: grid; place-items: center;
+}
+.w-medium .wbox { aspect-ratio: 2.15 / 1; }
+.w-small .wbox { aspect-ratio: 1; }
+.wbox .wglow { position: absolute; left: 50%; top: 46%; width: 62%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; background: radial-gradient(closest-side, var(--glow) 0%, var(--glow) 40%, color-mix(in srgb, var(--glow) 0%, transparent) 100%); }
+.w-medium .wbox .wglow { width: 34%; }
+.wbox .wcat { position: relative; height: 56%; aspect-ratio: 240 / 200; margin-top: -8%; }
+.wbox .wcat svg { width: 100%; height: 100%; display: block; }
+.wbox .wt { position: absolute; bottom: 9px; font-size: 11px; font-weight: 700; color: var(--muted); font-variant-numeric: tabular-nums; }
+.wbox .wt.l { left: 13px; } .wbox .wt.r { right: 13px; color: var(--ink); }
+.w-icons { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-content: start; }
+.app-icon { width: 100%; max-width: 64px; aspect-ratio: 1; border-radius: 15px; background: var(--widget); display: grid; place-items: center; overflow: hidden; position: relative; }
+.app-icon svg { width: 90%; height: 90%; margin-top: 6%; }
+.ghost { background: rgba(244, 241, 234, .35); }
+
+@media (max-height: 640px) { .hi { font-size: 46px; } }
+@media (prefers-reduced-motion: reduce) {
+  .crab .eyes, .crab .breathe { animation: none; }
+  .holder, .sheet, .backdrop, .glow { transition: none; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="wob" x="-6%" y="-6%" width="112%" height="112%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="1" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <pattern id="knit" patternUnits="userSpaceOnUse" width="12" height="12">
+      <rect width="12" height="12" fill="#62907a"/>
+      <rect y="7" width="12" height="5" fill="#486e5c"/>
+    </pattern>
+  </defs>
+</svg>
+
+<main class="app" id="app">
+  <header class="top">
+    <button class="round" id="widgetBtn" aria-label="widget preview" title="widget preview">
+      <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="1" y="1" width="6" height="6" rx="1.8"/><rect x="9" y="1" width="6" height="6" rx="1.8"/><rect x="1" y="9" width="6" height="6" rx="1.8"/><rect x="9" y="9" width="6" height="6" rx="1.8"/></svg>
+    </button>
+    <button class="city" id="cityBtn" aria-haspopup="dialog">
+      <svg class="pin" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 3 3 10.5l7.6 2.9L13.5 21z"/></svg>
+      <span id="cityName">new york</span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+    </button>
+    <button class="round" id="unitBtn" aria-label="switch to celsius">°c</button>
+  </header>
+
+  <section class="main" aria-label="forecast">
+    <div class="cat-layer" aria-hidden="true">
+      <div class="glow" id="glow"></div>
+      <canvas class="fx" id="fx"></canvas>
+      <div class="cat-stack">
+        <div class="holder on" id="holderA"></div>
+        <div class="holder" id="holderB"></div>
+      </div>
+    </div>
+    <div class="track" id="track" tabindex="0" aria-roledescription="carousel" aria-label="days"></div>
+    <button class="nav" id="prevBtn" aria-label="previous day"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg></button>
+    <button class="pill more" id="moreBtn" aria-haspopup="dialog">view more dates</button>
+    <button class="nav" id="nextBtn" aria-label="next day"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></button>
+  </section>
+
+  <footer class="foot">
+    <p class="note" id="note"></p>
+  </footer>
+  <p id="live" class="note" aria-live="polite" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)"></p>
+</main>
+
+<div class="sheet-wrap" id="datesSheet" hidden>
+  <div class="backdrop" data-close></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="datesTitle">
+    <div class="grab"></div>
+    <div class="sheet-head"><h2 id="datesTitle">this week</h2><button class="round" data-close aria-label="close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <ul class="list" id="dateList"></ul>
+  </div>
+</div>
+
+<div class="sheet-wrap" id="citySheet" hidden>
+  <div class="backdrop" data-close></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="cityTitle">
+    <div class="grab"></div>
+    <div class="sheet-head"><h2 id="cityTitle">pick a city</h2><button class="round" data-close aria-label="close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <label class="search" for="citySearch">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="citySearch" type="search" placeholder="search cities" autocomplete="off" spellcheck="false">
+    </label>
+    <button class="loc-btn" id="locBtn" hidden><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 3 3 10.5l7.6 2.9L13.5 21z"/></svg>use my location</button>
+    <ul class="list" id="cityList"></ul>
+    <p class="sheet-note" id="cityMsg"></p>
+  </div>
+</div>
+
+<div class="sheet-wrap" id="widgetSheet" hidden>
+  <div class="backdrop" data-close></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="widgetTitle">
+    <div class="grab"></div>
+    <div class="sheet-head"><h2 id="widgetTitle">widgets</h2><button class="round" data-close aria-label="close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="home" id="home"></div>
+    <p class="sheet-note" id="widgetNote">today's outfit, ready for your home screen</p>
+  </div>
+</div>
+
+<script type="application/json" id="snapshot">{"fetched":"2026-10-13","cities":[{"g":"cap","name":"Washington, D.C.","st":"District of Columbia","abbr":"DC","lat":38.91,"lon":-77.04,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[61,0,51,61,55,3,1,3],"temperature_2m_max":[23.3,24.5,30.0,21.5,29.4,13.2,17.0,20.4],"temperature_2m_min":[15.1,13.2,16.6,13.9,12.1,8.1,6.7,8.2],"apparent_temperature_max":[23.6,25.4,32.0,23.3,28.9,7.9,12.7,17.5],"apparent_temperature_min":[13.8,13.6,17.1,13.8,6.4,2.1,3.8,5.4],"wind_speed_10m_max":[4.7,4.0,3.8,3.4,8.8,7.5,3.5,4.3],"precipitation_probability_max":[56,3,20,47,35,10,1,1]}},{"g":"cap","name":"Montgomery","st":"Alabama","abbr":"AL","lat":32.38,"lon":-86.3,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,45,0,0,3,3,3,3],"temperature_2m_max":[33.2,32.0,32.1,30.9,31.3,22.8,24.1,25.5],"temperature_2m_min":[14.4,15.0,16.2,19.3,17.8,10.9,11.8,16.0],"apparent_temperature_max":[34.8,33.6,33.7,33.6,31.7,20.3,22.8,25.3],"apparent_temperature_min":[15.4,15.8,17.3,20.7,13.2,7.2,8.3,14.2],"wind_speed_10m_max":[3.6,2.2,3.0,2.2,7.3,5.3,5.4,5.0],"precipitation_probability_max":[0,0,0,0,0,1,1,1]}},{"g":"cap","name":"Juneau","st":"Alaska","abbr":"AK","lat":58.3,"lon":-134.42,"tz":"America/Juneau","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[55,51,51,81,82,81,81,3],"temperature_2m_max":[8.0,8.5,9.1,8.7,9.9,7.2,7.2,9.7],"temperature_2m_min":[5.4,4.9,3.5,5.2,5.1,3.8,5.6,2.5],"apparent_temperature_max":[6.0,6.2,5.9,6.3,8.7,4.1,4.9,8.0],"apparent_temperature_min":[2.4,2.3,1.2,0.7,3.3,2.0,3.3,0.1],"wind_speed_10m_max":[3.8,3.1,4.2,6.2,4.8,4.3,4.3,1.6],"precipitation_probability_max":[100,89,33,100,100,94,90,72]}},{"g":"cap","name":"Phoenix","st":"Arizona","abbr":"AZ","lat":33.45,"lon":-112.07,"tz":"America/Phoenix","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,53,0,0,3,3,3,3],"temperature_2m_max":[26.8,26.5,27.0,32.5,29.8,24.4,26.7,30.0],"temperature_2m_min":[20.3,17.3,11.5,21.6,24.0,20.1,20.5,23.7],"apparent_temperature_max":[27.6,25.9,24.5,27.4,26.2,18.2,25.9,28.7],"apparent_temperature_min":[21.0,15.0,9.3,18.5,18.3,15.0,18.3,22.6],"wind_speed_10m_max":[4.9,6.5,4.2,9.5,9.6,8.8,2.9,3.1],"precipitation_probability_max":[20,38,0,0,9,12,6,4]}},{"g":"cap","name":"Little Rock","st":"Arkansas","abbr":"AR","lat":34.75,"lon":-92.29,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,3,55,3,3,3,3,3],"temperature_2m_max":[34.2,33.4,29.6,33.6,24.1,19.7,24.4,27.9],"temperature_2m_min":[16.4,19.3,23.9,23.1,14.9,9.3,9.9,15.8],"apparent_temperature_max":[33.1,36.7,34.1,32.6,23.1,16.2,21.5,25.6],"apparent_temperature_min":[16.6,19.7,28.1,22.3,10.6,5.2,7.1,13.7],"wind_speed_10m_max":[4.5,4.1,3.8,4.5,6.6,5.2,2.6,2.8],"precipitation_probability_max":[0,5,47,7,2,0,0,7]}},{"g":"cap","name":"Sacramento","st":"California","abbr":"CA","lat":38.58,"lon":-121.49,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,3,3,0,0,3,3,3],"temperature_2m_max":[22.5,25.5,27.3,31.8,30.2,30.6,26.2,21.6],"temperature_2m_min":[8.9,6.9,6.9,15.4,17.1,18.1,14.7,12.5],"apparent_temperature_max":[20.5,20.2,23.8,28.9,28.3,28.0,22.6,19.1],"apparent_temperature_min":[5.9,3.1,3.7,11.7,14.0,15.6,11.3,9.7],"wind_speed_10m_max":[2.7,5.3,2.5,3.5,2.4,2.9,6.1,5.6],"precipitation_probability_max":[0,0,0,0,0,0,0,15]}},{"g":"cap","name":"Denver","st":"Colorado","abbr":"CO","lat":39.74,"lon":-104.99,"tz":"America/Denver","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,63,71,61,0,3,3,0],"temperature_2m_max":[28.5,19.5,11.7,12.0,17.4,21.3,20.6,20.2],"temperature_2m_min":[14.4,11.3,4.2,4.4,6.1,8.7,13.2,11.0],"apparent_temperature_max":[24.4,16.9,9.3,7.6,13.9,17.7,17.0,17.2],"apparent_temperature_min":[11.0,9.9,1.1,1.1,1.8,5.0,9.7,8.4],"wind_speed_10m_max":[7.9,4.0,4.6,8.2,2.8,2.1,4.2,2.4],"precipitation_probability_max":[1,15,89,89,29,1,2,2]}},{"g":"cap","name":"Hartford","st":"Connecticut","abbr":"CT","lat":41.76,"lon":-72.69,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,3,3,63,3,1,3],"temperature_2m_max":[20.2,18.1,22.2,17.1,20.4,12.0,14.7,18.8],"temperature_2m_min":[10.5,12.5,12.2,11.1,11.0,3.9,2.4,7.6],"apparent_temperature_max":[19.8,17.8,23.4,14.4,20.2,8.3,10.1,14.7],"apparent_temperature_min":[8.2,12.2,10.9,9.1,9.2,-1.1,-1.2,4.4],"wind_speed_10m_max":[5.3,4.5,4.6,3.7,9.7,7.6,4.8,5.2],"precipitation_probability_max":[43,14,8,4,76,20,1,1]}},{"g":"cap","name":"Dover","st":"Delaware","abbr":"DE","lat":39.16,"lon":-75.52,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[55,0,3,53,80,3,0,3],"temperature_2m_max":[22.3,24.4,26.8,20.9,26.4,11.9,15.5,19.9],"temperature_2m_min":[13.9,13.4,17.5,15.1,11.6,5.9,4.2,8.9],"apparent_temperature_max":[21.9,25.7,29.2,22.4,25.3,4.8,11.1,17.1],"apparent_temperature_min":[12.2,13.1,17.4,12.6,4.9,-0.0,0.6,5.2],"wind_speed_10m_max":[5.3,4.2,4.4,5.5,13.6,11.1,4.9,6.1],"precipitation_probability_max":[53,3,14,23,43,13,1,1]}},{"g":"cap","name":"Tallahassee","st":"Florida","abbr":"FL","lat":30.44,"lon":-84.28,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,0,0,0,3,3,3,3],"temperature_2m_max":[29.7,27.8,27.4,31.4,30.6,24.9,24.4,29.3],"temperature_2m_min":[16.7,17.0,17.2,19.0,19.1,17.0,15.1,18.8],"apparent_temperature_max":[31.6,31.3,31.6,34.3,32.4,24.3,24.6,30.2],"apparent_temperature_min":[17.6,17.1,17.6,20.2,20.0,13.7,13.1,19.2],"wind_speed_10m_max":[4.6,2.6,2.5,2.8,3.0,5.0,5.0,5.0],"precipitation_probability_max":[0,0,0,0,3,2,2,3]}},{"g":"cap","name":"Atlanta","st":"Georgia","abbr":"GA","lat":33.75,"lon":-84.39,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,2,0,0,3,3,0,3],"temperature_2m_max":[29.6,29.6,29.9,31.6,30.1,22.1,20.7,24.3],"temperature_2m_min":[15.0,14.9,15.9,21.2,17.3,11.8,10.3,12.1],"apparent_temperature_max":[29.3,31.5,31.3,32.1,29.0,19.0,17.4,23.1],"apparent_temperature_min":[14.6,15.9,15.2,22.2,12.4,8.2,5.8,8.5],"wind_speed_10m_max":[5.6,2.2,2.5,2.3,8.1,5.5,5.7,4.3],"precipitation_probability_max":[0,0,0,0,0,1,0,1]}},{"g":"cap","name":"Honolulu","st":"Hawaii","abbr":"HI","lat":21.31,"lon":-157.86,"tz":"Pacific/Honolulu","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,0,1,53,51,51,51,51],"temperature_2m_max":[29.3,29.0,28.2,28.0,28.2,28.0,27.4,27.9],"temperature_2m_min":[21.8,23.3,22.0,21.8,23.0,22.6,21.7,23.0],"apparent_temperature_max":[33.0,32.2,30.8,30.2,29.9,29.2,28.5,29.6],"apparent_temperature_min":[24.6,25.4,24.0,23.7,24.3,23.7,23.6,24.2],"wind_speed_10m_max":[3.7,5.0,4.5,5.8,6.0,6.7,6.3,5.5],"precipitation_probability_max":[2,29,4,32,36,24,35,34]}},{"g":"cap","name":"Boise","st":"Idaho","abbr":"ID","lat":43.62,"lon":-116.2,"tz":"America/Boise","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,1,3,0,2,3,3,3],"temperature_2m_max":[13.1,16.5,19.9,21.5,25.1,24.7,19.2,17.0],"temperature_2m_min":[3.4,1.5,3.0,10.3,12.1,13.7,9.2,12.3],"apparent_temperature_max":[8.7,10.8,14.4,18.5,19.6,21.1,16.5,14.2],"apparent_temperature_min":[0.5,-2.2,-0.5,7.5,8.9,9.9,6.9,9.9],"wind_speed_10m_max":[4.9,6.2,5.9,3.8,7.2,6.2,2.9,4.9],"precipitation_probability_max":[5,1,2,0,0,0,0,11]}},{"g":"cap","name":"Springfield","st":"Illinois","abbr":"IL","lat":39.8,"lon":-89.64,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,51,53,3,0,3,53],"temperature_2m_max":[32.3,33.2,25.4,25.5,15.7,15.0,19.4,13.4],"temperature_2m_min":[18.3,20.0,17.8,17.0,6.7,3.1,5.8,11.6],"apparent_temperature_max":[31.8,33.6,26.6,25.9,12.7,11.3,14.2,13.9],"apparent_temperature_min":[17.7,19.6,16.8,16.7,2.0,0.2,1.5,8.9],"wind_speed_10m_max":[5.8,4.9,5.3,7.6,10.3,4.0,6.0,4.5],"precipitation_probability_max":[1,14,40,93,53,1,1,9]}},{"g":"cap","name":"Indianapolis","st":"Indiana","abbr":"IN","lat":39.77,"lon":-86.16,"tz":"America/Indiana/Indianapolis","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,51,82,53,51,3,3],"temperature_2m_max":[29.9,30.9,25.5,23.7,21.8,14.4,19.3,19.0],"temperature_2m_min":[11.6,18.4,17.1,17.8,9.4,6.8,6.2,11.9],"apparent_temperature_max":[30.1,30.0,29.0,25.9,23.6,11.2,15.0,17.9],"apparent_temperature_min":[11.4,18.7,16.8,17.1,4.5,2.6,2.2,8.9],"wind_speed_10m_max":[4.8,5.8,4.1,5.1,8.1,4.7,4.5,4.3],"precipitation_probability_max":[1,3,63,68,68,2,1,6]}},{"g":"cap","name":"Des Moines","st":"Iowa","abbr":"IA","lat":41.59,"lon":-93.62,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[2,3,53,81,3,0,3,3],"temperature_2m_max":[30.5,18.0,15.0,18.4,11.6,14.5,17.0,17.6],"temperature_2m_min":[17.7,13.2,11.0,11.7,5.6,2.6,5.8,10.6],"apparent_temperature_max":[31.1,18.9,14.9,19.8,6.0,9.0,12.2,13.1],"apparent_temperature_min":[16.7,12.4,8.8,6.9,-0.3,-1.5,1.5,7.6],"wind_speed_10m_max":[6.6,4.0,4.2,8.4,10.7,7.2,9.0,5.1],"precipitation_probability_max":[2,26,19,87,8,0,10,15]}},{"g":"cap","name":"Topeka","st":"Kansas","abbr":"KS","lat":39.05,"lon":-95.68,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,65,63,81,3,0,53,61],"temperature_2m_max":[32.5,31.7,17.6,25.5,13.2,14.8,19.1,14.4],"temperature_2m_min":[22.0,16.6,14.5,13.2,6.6,4.4,7.4,13.1],"apparent_temperature_max":[31.4,35.7,19.8,25.1,7.5,10.7,14.6,14.1],"apparent_temperature_min":[21.2,15.9,12.9,8.1,1.9,1.0,3.3,12.1],"wind_speed_10m_max":[7.8,8.8,6.2,11.6,9.2,5.5,8.7,4.4],"precipitation_probability_max":[1,53,56,94,8,0,10,13]}},{"g":"cap","name":"Frankfort","st":"Kentucky","abbr":"KY","lat":38.2,"lon":-84.87,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,1,53,80,51,0,1,3],"temperature_2m_max":[29.5,32.0,31.2,29.6,23.2,15.1,22.2,22.2],"temperature_2m_min":[14.4,16.5,18.7,21.0,7.6,4.4,3.3,9.5],"apparent_temperature_max":[30.1,29.7,32.8,31.2,22.3,10.9,17.9,20.8],"apparent_temperature_min":[14.5,16.4,18.9,22.2,4.4,1.1,-0.3,6.5],"wind_speed_10m_max":[4.0,6.2,6.1,6.0,8.7,4.7,5.2,5.0],"precipitation_probability_max":[0,1,81,69,18,1,1,4]}},{"g":"cap","name":"Baton Rouge","st":"Louisiana","abbr":"LA","lat":30.45,"lon":-91.15,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,45,45,0,3,3,3,51],"temperature_2m_max":[31.2,33.4,31.8,32.3,33.3,25.2,27.4,28.8],"temperature_2m_min":[16.1,18.7,17.7,20.5,21.1,15.6,15.3,20.6],"apparent_temperature_max":[34.4,35.3,32.9,32.6,33.9,22.3,28.4,29.8],"apparent_temperature_min":[17.2,20.6,20.0,22.7,19.7,11.1,12.6,22.0],"wind_speed_10m_max":[3.2,3.7,3.2,3.2,7.1,5.5,4.4,6.0],"precipitation_probability_max":[0,2,0,0,5,1,4,25]}},{"g":"cap","name":"Augusta","st":"Maine","abbr":"ME","lat":44.31,"lon":-69.78,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[55,63,45,3,61,53,3,3],"temperature_2m_max":[21.7,11.3,17.8,12.6,14.9,11.5,9.5,16.7],"temperature_2m_min":[9.0,5.0,9.0,3.9,3.7,0.3,-2.5,3.6],"apparent_temperature_max":[20.8,9.9,16.2,8.9,14.2,9.3,6.7,13.0],"apparent_temperature_min":[6.8,2.2,5.9,1.2,1.3,-5.9,-6.9,1.0],"wind_speed_10m_max":[5.7,5.6,5.5,5.7,6.4,8.6,5.3,4.3],"precipitation_probability_max":[81,99,70,0,90,35,2,2]}},{"g":"cap","name":"Annapolis","st":"Maryland","abbr":"MD","lat":38.98,"lon":-76.49,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,0,3,55,80,3,1,3],"temperature_2m_max":[22.4,24.0,27.6,20.8,27.9,13.2,16.0,19.9],"temperature_2m_min":[14.5,13.8,17.4,13.9,11.8,7.8,5.6,7.7],"apparent_temperature_max":[23.0,26.3,31.6,22.1,27.7,7.1,12.1,17.4],"apparent_temperature_min":[13.1,13.8,17.8,12.2,5.1,2.6,2.3,4.9],"wind_speed_10m_max":[5.7,3.4,3.8,5.7,12.5,9.6,4.5,4.9],"precipitation_probability_max":[58,4,12,42,35,11,1,1]}},{"g":"cap","name":"Boston","st":"Massachusetts","abbr":"MA","lat":42.36,"lon":-71.06,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[55,3,3,3,80,51,3,3],"temperature_2m_max":[20.1,15.1,22.2,15.3,18.5,13.3,14.2,18.3],"temperature_2m_min":[9.8,11.4,13.3,11.0,10.4,3.5,2.2,8.4],"apparent_temperature_max":[20.0,15.5,22.1,12.9,17.3,8.5,9.2,14.0],"apparent_temperature_min":[7.9,9.5,12.1,7.8,6.7,-3.1,-3.2,3.7],"wind_speed_10m_max":[4.4,4.6,5.8,6.7,8.2,9.9,6.9,6.4],"precipitation_probability_max":[92,26,27,0,79,30,1,2]}},{"g":"cap","name":"Lansing","st":"Michigan","abbr":"MI","lat":42.73,"lon":-84.56,"tz":"America/Detroit","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,63,63,61,3,3,3],"temperature_2m_max":[29.0,26.6,15.4,15.6,16.7,12.2,17.0,14.2],"temperature_2m_min":[12.2,15.9,11.3,8.0,5.4,1.9,4.6,11.5],"apparent_temperature_max":[28.3,25.5,15.0,12.6,16.0,7.5,11.4,10.7],"apparent_temperature_min":[11.3,15.1,9.0,5.2,-0.5,-1.7,-0.5,6.5],"wind_speed_10m_max":[5.8,7.6,3.9,6.2,10.1,5.6,7.2,6.0],"precipitation_probability_max":[14,11,35,79,79,1,0,6]}},{"g":"cap","name":"Saint Paul","st":"Minnesota","abbr":"MN","lat":44.95,"lon":-93.09,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,3,63,3,2,3,3],"temperature_2m_max":[27.5,14.5,11.5,11.2,11.3,15.3,18.6,17.1],"temperature_2m_min":[13.9,10.3,8.3,8.8,6.6,4.5,8.5,10.2],"apparent_temperature_max":[29.3,12.1,8.9,9.5,5.6,9.1,14.1,13.4],"apparent_temperature_min":[12.7,7.9,6.2,3.4,0.1,-0.5,4.1,5.9],"wind_speed_10m_max":[4.0,3.5,3.2,6.6,8.8,7.1,6.2,4.1],"precipitation_probability_max":[4,12,5,45,3,0,2,2]}},{"g":"cap","name":"Jackson","st":"Mississippi","abbr":"MS","lat":32.3,"lon":-90.18,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,1,0,0,3,3,3,3],"temperature_2m_max":[33.8,34.0,34.4,32.7,30.8,22.7,26.7,23.8],"temperature_2m_min":[13.8,15.4,18.8,20.4,18.4,11.6,14.1,18.4],"apparent_temperature_max":[34.6,33.9,34.2,33.3,30.9,19.0,26.0,24.2],"apparent_temperature_min":[14.2,15.6,20.0,20.8,13.0,7.1,11.3,18.7],"wind_speed_10m_max":[2.6,3.5,2.7,3.2,6.8,6.0,3.4,4.1],"precipitation_probability_max":[0,1,1,0,1,0,0,4]}},{"g":"cap","name":"Jefferson City","st":"Missouri","abbr":"MO","lat":38.58,"lon":-92.17,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[2,3,65,80,3,0,3,53],"temperature_2m_max":[34.0,34.4,25.6,28.0,15.9,16.7,20.7,14.2],"temperature_2m_min":[17.9,17.3,19.6,17.4,6.7,3.7,5.3,11.9],"apparent_temperature_max":[33.9,36.3,26.8,28.8,12.5,13.5,16.3,14.4],"apparent_temperature_min":[17.1,17.1,20.7,14.5,3.3,1.0,1.9,9.0],"wind_speed_10m_max":[6.4,4.8,6.1,8.5,8.6,3.0,5.1,3.1],"precipitation_probability_max":[1,9,56,89,59,0,1,9]}},{"g":"cap","name":"Helena","st":"Montana","abbr":"MT","lat":46.59,"lon":-112.04,"tz":"America/Denver","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,3,3,2,3],"temperature_2m_max":[2.2,9.1,12.8,12.7,19.5,23.0,13.6,18.1],"temperature_2m_min":[-1.0,-2.1,0.8,1.3,3.7,5.7,4.1,5.5],"apparent_temperature_max":[-0.6,7.8,9.9,10.6,16.3,18.8,8.8,14.9],"apparent_temperature_min":[-5.3,-5.2,-1.8,-1.9,0.7,2.2,0.0,2.8],"wind_speed_10m_max":[3.4,3.1,4.1,2.9,4.0,6.4,4.2,4.4],"precipitation_probability_max":[52,0,3,1,0,0,1,18]}},{"g":"cap","name":"Lincoln","st":"Nebraska","abbr":"NE","lat":40.81,"lon":-96.7,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,55,80,1,0,3,3],"temperature_2m_max":[33.0,14.3,15.2,16.6,12.0,15.7,17.7,18.6],"temperature_2m_min":[14.9,11.5,9.4,10.5,5.5,3.0,8.0,10.6],"apparent_temperature_max":[32.2,13.0,12.1,18.0,6.5,9.6,13.7,14.9],"apparent_temperature_min":[13.7,9.4,5.9,4.5,-0.4,-1.4,2.8,6.7],"wind_speed_10m_max":[7.1,3.6,5.3,9.8,9.4,8.1,8.9,5.7],"precipitation_probability_max":[4,10,23,91,5,0,6,8]}},{"g":"cap","name":"Carson City","st":"Nevada","abbr":"NV","lat":39.16,"lon":-119.77,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,2,0,0,3,3,3],"temperature_2m_max":[12.4,13.5,19.9,19.9,22.5,24.8,23.7,15.8],"temperature_2m_min":[3.7,0.1,3.6,5.9,6.2,9.5,9.2,3.5],"apparent_temperature_max":[10.3,10.3,15.5,15.6,19.0,19.8,16.8,7.1],"apparent_temperature_min":[-0.5,-4.2,-0.2,3.2,3.9,5.9,4.7,0.2],"wind_speed_10m_max":[6.1,3.5,4.1,4.9,2.1,8.1,11.4,14.6],"precipitation_probability_max":[18,0,0,0,0,0,0,19]}},{"g":"cap","name":"Concord","st":"New Hampshire","abbr":"NH","lat":43.21,"lon":-71.54,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[53,65,45,3,81,51,2,3],"temperature_2m_max":[21.3,14.3,20.7,14.9,18.0,10.5,13.9,17.8],"temperature_2m_min":[8.7,8.5,9.9,6.4,6.4,0.5,-2.4,3.2],"apparent_temperature_max":[19.9,14.3,20.6,11.5,17.2,6.7,9.4,14.0],"apparent_temperature_min":[7.2,6.5,8.3,4.1,4.3,-5.9,-6.6,0.6],"wind_speed_10m_max":[4.7,3.8,6.0,5.9,6.2,8.2,5.9,4.9],"precipitation_probability_max":[68,76,23,1,86,21,1,2]}},{"g":"cap","name":"Trenton","st":"New Jersey","abbr":"NJ","lat":40.22,"lon":-74.76,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[55,45,3,3,80,3,3,3],"temperature_2m_max":[22.2,23.0,24.4,19.4,26.3,12.0,15.4,19.7],"temperature_2m_min":[12.8,11.2,16.6,12.4,11.9,5.8,4.6,8.6],"apparent_temperature_max":[21.9,24.0,25.6,17.7,26.2,6.9,11.0,16.5],"apparent_temperature_min":[11.1,10.9,16.7,10.2,7.1,0.8,1.1,6.3],"wind_speed_10m_max":[4.3,4.3,4.4,3.7,9.2,7.6,4.2,5.0],"precipitation_probability_max":[43,3,20,13,73,14,1,1]}},{"g":"cap","name":"Santa Fe","st":"New Mexico","abbr":"NM","lat":35.69,"lon":-105.94,"tz":"America/Denver","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[2,3,3,0,0,3,53,3],"temperature_2m_max":[20.6,18.9,14.7,16.8,15.0,14.8,8.9,15.6],"temperature_2m_min":[10.9,9.3,4.9,3.7,3.2,2.9,6.6,5.6],"apparent_temperature_max":[16.7,14.7,8.4,13.4,11.3,11.4,7.0,12.8],"apparent_temperature_min":[8.7,6.5,-0.8,-1.3,-1.3,-1.0,3.3,3.2],"wind_speed_10m_max":[8.7,7.8,8.3,7.3,4.7,3.4,3.5,3.8],"precipitation_probability_max":[18,3,11,3,7,11,10,3]}},{"g":"cap","name":"Albany","st":"New York","abbr":"NY","lat":42.65,"lon":-73.76,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[61,3,3,3,80,51,2,3],"temperature_2m_max":[18.4,20.4,18.7,15.0,17.9,9.6,16.0,17.0],"temperature_2m_min":[10.8,14.1,12.6,10.7,11.0,3.4,1.1,4.9],"apparent_temperature_max":[17.6,18.8,19.0,11.6,17.5,4.5,11.3,13.5],"apparent_temperature_min":[9.5,14.1,10.8,7.4,6.7,-2.3,-3.2,1.2],"wind_speed_10m_max":[4.1,7.4,4.5,4.1,7.5,7.4,5.1,4.4],"precipitation_probability_max":[88,25,12,11,85,15,5,2]}},{"g":"cap","name":"Raleigh","st":"North Carolina","abbr":"NC","lat":35.78,"lon":-78.64,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,0,3,3,3,0,2],"temperature_2m_max":[28.5,28.9,32.0,32.2,31.8,18.7,19.3,23.6],"temperature_2m_min":[17.2,13.5,16.2,20.5,18.0,11.4,8.1,11.7],"apparent_temperature_max":[29.4,29.2,32.7,32.7,30.4,14.7,16.4,22.4],"apparent_temperature_min":[17.7,13.2,16.4,20.8,13.0,6.5,3.9,10.6],"wind_speed_10m_max":[4.8,2.6,3.1,4.3,8.2,7.5,3.5,2.7],"precipitation_probability_max":[1,1,2,1,17,17,1,0]}},{"g":"cap","name":"Bismarck","st":"North Dakota","abbr":"ND","lat":46.81,"lon":-100.78,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,3,3,61,3,2,3,2],"temperature_2m_max":[7.1,8.0,11.1,11.0,11.9,23.7,16.5,17.6],"temperature_2m_min":[5.7,4.6,3.2,5.6,0.0,5.3,9.1,4.9],"apparent_temperature_max":[4.7,4.9,9.5,8.0,5.5,19.3,9.3,10.8],"apparent_temperature_min":[1.6,1.4,0.4,-1.8,-3.4,0.5,4.8,2.0],"wind_speed_10m_max":[6.3,3.9,2.5,11.5,7.9,6.3,9.8,7.7],"precipitation_probability_max":[59,1,4,5,1,0,0,1]}},{"g":"cap","name":"Columbus","st":"Ohio","abbr":"OH","lat":39.96,"lon":-83.0,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,65,53,51,3,2,3],"temperature_2m_max":[25.3,30.7,24.3,20.4,20.8,12.5,18.8,20.8],"temperature_2m_min":[15.8,17.4,16.0,14.3,9.8,4.9,5.4,10.4],"apparent_temperature_max":[26.2,28.5,27.5,22.0,22.3,8.6,14.9,18.5],"apparent_temperature_min":[16.5,17.5,14.8,12.4,4.8,0.3,1.9,7.2],"wind_speed_10m_max":[4.3,5.8,4.4,4.4,8.1,5.8,3.7,4.2],"precipitation_probability_max":[1,2,81,68,68,1,1,8]}},{"g":"cap","name":"Oklahoma City","st":"Oklahoma","abbr":"OK","lat":35.47,"lon":-97.52,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,3,82,81,3,3,61,61],"temperature_2m_max":[32.8,32.8,30.9,23.7,15.8,16.6,20.1,18.1],"temperature_2m_min":[21.8,23.5,20.5,14.8,10.3,5.7,9.3,13.9],"apparent_temperature_max":[32.7,34.3,32.5,24.3,9.5,13.4,16.1,16.4],"apparent_temperature_min":[20.7,25.3,22.2,9.9,3.7,2.4,5.7,12.1],"wind_speed_10m_max":[7.1,6.5,6.4,10.8,11.0,4.7,6.5,6.2],"precipitation_probability_max":[0,14,86,80,23,0,4,7]}},{"g":"cap","name":"Salem","st":"Oregon","abbr":"OR","lat":44.94,"lon":-123.04,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,3,3,0,3,55,55,55],"temperature_2m_max":[19.1,19.0,22.2,25.6,25.9,18.7,17.2,13.2],"temperature_2m_min":[2.7,3.2,8.0,9.7,10.1,8.9,4.8,8.2],"apparent_temperature_max":[17.3,16.6,19.7,23.7,24.7,16.0,13.9,10.9],"apparent_temperature_min":[-0.3,0.7,5.9,8.7,8.7,6.5,2.8,5.2],"wind_speed_10m_max":[1.8,2.0,2.9,2.8,1.4,3.5,2.7,4.4],"precipitation_probability_max":[0,3,6,0,0,33,20,51]}},{"g":"cap","name":"Harrisburg","st":"Pennsylvania","abbr":"PA","lat":40.27,"lon":-76.88,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,3,3,51,3,0,3],"temperature_2m_max":[21.7,24.5,24.2,19.7,28.4,11.2,15.3,18.1],"temperature_2m_min":[13.7,12.0,16.0,11.5,10.3,4.5,1.9,4.3],"apparent_temperature_max":[21.7,25.5,26.7,18.4,27.7,5.8,11.2,15.2],"apparent_temperature_min":[13.1,11.8,16.0,9.4,4.5,-0.9,-1.0,1.8],"wind_speed_10m_max":[4.7,4.3,3.8,3.9,8.8,8.2,4.5,3.2],"precipitation_probability_max":[22,4,28,21,57,3,1,1]}},{"g":"cap","name":"Providence","st":"Rhode Island","abbr":"RI","lat":41.82,"lon":-71.41,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,3,3,3,63,3,2,3],"temperature_2m_max":[20.5,16.5,23.0,16.9,19.6,12.5,13.9,18.2],"temperature_2m_min":[10.2,13.2,13.4,10.2,10.1,2.3,0.3,6.9],"apparent_temperature_max":[20.3,16.9,23.4,14.0,18.8,9.3,9.3,14.6],"apparent_temperature_min":[7.7,12.5,12.5,7.7,7.7,-2.6,-4.0,3.5],"wind_speed_10m_max":[5.5,4.7,5.6,5.1,7.5,8.3,5.3,6.0],"precipitation_probability_max":[84,10,14,1,79,30,1,1]}},{"g":"cap","name":"Columbia","st":"South Carolina","abbr":"SC","lat":34.0,"lon":-81.03,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,3,0,0,3,3,0,3],"temperature_2m_max":[31.3,30.1,31.9,31.9,31.8,20.6,20.8,24.5],"temperature_2m_min":[15.6,13.7,15.6,20.4,18.8,11.4,8.9,13.2],"apparent_temperature_max":[31.3,30.3,33.0,32.9,30.8,16.9,17.2,23.0],"apparent_temperature_min":[16.4,13.5,16.1,21.2,13.7,6.8,4.8,10.9],"wind_speed_10m_max":[4.5,2.3,3.2,2.6,7.1,6.3,4.3,3.8],"precipitation_probability_max":[0,0,1,0,3,2,1,0]}},{"g":"cap","name":"Pierre","st":"South Dakota","abbr":"SD","lat":44.37,"lon":-100.35,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,63,51,1,0,3,0],"temperature_2m_max":[12.4,12.4,13.9,16.1,12.9,25.7,20.5,20.0],"temperature_2m_min":[8.8,6.9,2.8,8.7,3.2,8.0,10.7,7.3],"apparent_temperature_max":[9.2,8.9,11.1,10.0,7.8,21.6,13.5,12.3],"apparent_temperature_min":[6.7,4.3,-0.2,0.6,-1.1,1.0,6.2,3.9],"wind_speed_10m_max":[6.4,5.3,3.5,12.8,9.4,7.8,10.3,9.1],"precipitation_probability_max":[6,11,35,60,1,0,0,0]}},{"g":"cap","name":"Nashville","st":"Tennessee","abbr":"TN","lat":36.16,"lon":-86.78,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,63,3,3,0,3,3],"temperature_2m_max":[32.2,31.7,32.3,32.6,24.4,18.6,22.4,22.6],"temperature_2m_min":[12.5,14.4,19.0,23.0,11.2,8.0,10.2,14.1],"apparent_temperature_max":[33.1,33.1,35.0,32.4,23.6,14.4,18.6,21.3],"apparent_temperature_min":[12.6,14.2,20.0,24.1,7.0,3.9,7.4,11.3],"wind_speed_10m_max":[2.7,3.9,3.8,4.0,6.5,5.8,4.7,3.9],"precipitation_probability_max":[0,0,27,16,2,1,1,2]}},{"g":"cap","name":"Austin","st":"Texas","abbr":"TX","lat":30.27,"lon":-97.74,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[95,3,3,3,3,3,3,3],"temperature_2m_max":[31.9,34.4,33.7,32.4,25.8,23.1,27.5,29.3],"temperature_2m_min":[22.9,26.0,25.6,21.6,18.7,14.9,17.0,21.0],"apparent_temperature_max":[36.3,36.9,35.9,32.9,26.8,19.9,25.9,29.0],"apparent_temperature_min":[26.3,30.1,28.4,23.7,13.1,10.4,14.2,20.3],"wind_speed_10m_max":[4.5,5.6,5.6,4.8,7.7,6.2,3.5,2.9],"precipitation_probability_max":[13,16,52,14,10,0,4,12]}},{"g":"cap","name":"Salt Lake City","st":"Utah","abbr":"UT","lat":40.76,"lon":-111.89,"tz":"America/Denver","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,71,53,1,0,0,0,3],"temperature_2m_max":[13.9,9.7,11.4,20.4,20.7,21.8,22.2,22.2],"temperature_2m_min":[9.2,7.1,6.4,9.8,10.9,12.6,13.8,14.8],"apparent_temperature_max":[12.1,8.1,9.4,16.4,17.3,18.3,19.2,15.8],"apparent_temperature_min":[7.0,3.9,4.1,7.2,7.5,9.1,10.1,10.7],"wind_speed_10m_max":[8.3,4.5,3.7,5.7,2.5,3.1,3.0,7.1],"precipitation_probability_max":[68,72,17,2,0,0,0,14]}},{"g":"cap","name":"Montpelier","st":"Vermont","abbr":"VT","lat":44.26,"lon":-72.58,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[53,65,63,51,80,85,3,3],"temperature_2m_max":[16.6,13.1,14.1,12.1,13.1,4.8,11.2,16.3],"temperature_2m_min":[9.2,9.7,8.4,5.4,6.4,-0.9,-4.8,2.1],"apparent_temperature_max":[16.0,13.2,13.6,9.3,11.1,-0.1,8.2,13.6],"apparent_temperature_min":[8.4,6.8,5.4,3.2,2.0,-6.5,-8.6,-1.1],"wind_speed_10m_max":[3.3,4.6,4.2,3.5,7.2,8.5,4.9,3.6],"precipitation_probability_max":[89,94,49,7,86,69,7,3]}},{"g":"cap","name":"Richmond","st":"Virginia","abbr":"VA","lat":37.54,"lon":-77.44,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,51,80,1,0,3],"temperature_2m_max":[24.1,25.3,29.4,22.7,31.2,15.0,18.0,22.2],"temperature_2m_min":[15.5,12.8,15.6,16.1,14.0,9.8,6.9,9.1],"apparent_temperature_max":[26.0,27.0,32.0,23.9,31.1,10.2,14.6,20.4],"apparent_temperature_min":[16.1,12.9,15.7,16.3,8.3,5.2,3.7,7.2],"wind_speed_10m_max":[5.2,3.0,2.5,3.8,7.3,6.4,2.5,3.5],"precipitation_probability_max":[25,3,4,22,23,19,1,1]}},{"g":"cap","name":"Olympia","st":"Washington","abbr":"WA","lat":47.04,"lon":-122.9,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,3,63,53,51],"temperature_2m_max":[18.3,17.5,19.3,23.2,24.1,16.5,16.1,13.0],"temperature_2m_min":[-0.2,5.8,10.3,8.8,8.8,7.2,5.0,7.8],"apparent_temperature_max":[16.4,14.6,19.5,22.0,22.1,12.7,13.8,10.1],"apparent_temperature_min":[-3.1,3.5,7.8,7.7,8.1,5.4,3.4,4.8],"wind_speed_10m_max":[2.0,3.2,3.4,2.1,3.0,5.4,2.1,4.4],"precipitation_probability_max":[1,8,11,0,3,40,28,54]}},{"g":"cap","name":"Charleston","st":"West Virginia","abbr":"WV","lat":38.35,"lon":-81.63,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,63,65,53,3,0,3],"temperature_2m_max":[22.5,26.3,27.3,22.6,24.9,12.6,19.7,21.6],"temperature_2m_min":[16.1,13.5,16.9,18.4,8.8,4.7,2.7,6.9],"apparent_temperature_max":[24.5,28.1,30.3,26.3,24.1,9.3,17.7,21.0],"apparent_temperature_min":[16.7,12.9,17.0,20.6,5.3,1.6,-0.4,4.4],"wind_speed_10m_max":[2.9,4.0,3.3,2.1,7.6,5.2,2.8,2.0],"precipitation_probability_max":[17,2,78,78,54,10,1,2]}},{"g":"cap","name":"Madison","st":"Wisconsin","abbr":"WI","lat":43.07,"lon":-89.4,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,53,3,65,3,0,3,3],"temperature_2m_max":[30.2,24.4,15.2,12.6,10.0,11.3,15.7,16.6],"temperature_2m_min":[17.4,15.4,11.1,9.4,2.4,0.6,4.7,9.1],"apparent_temperature_max":[30.7,24.6,14.7,12.2,5.4,5.5,10.1,13.3],"apparent_temperature_min":[17.1,14.2,8.7,5.6,-1.4,-3.0,-0.6,6.2],"wind_speed_10m_max":[5.7,5.3,5.2,7.8,10.3,7.1,8.9,6.3],"precipitation_probability_max":[5,28,15,75,54,0,3,12]}},{"g":"cap","name":"Cheyenne","st":"Wyoming","abbr":"WY","lat":41.14,"lon":-104.82,"tz":"America/Denver","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,63,73,75,0,0,3,0],"temperature_2m_max":[24.1,15.8,8.6,8.9,12.4,20.2,15.3,15.6],"temperature_2m_min":[9.0,7.5,2.6,3.0,2.0,6.1,7.6,5.1],"apparent_temperature_max":[20.2,14.4,6.5,2.2,6.1,16.9,10.0,9.2],"apparent_temperature_min":[5.6,5.2,-1.0,-5.2,-1.6,1.2,2.5,-0.1],"wind_speed_10m_max":[8.3,4.1,4.8,13.7,7.7,6.8,9.7,8.5],"precipitation_probability_max":[10,39,88,88,15,0,2,2]}},{"g":"big","name":"New York","st":"New York","abbr":"NY","lat":40.71,"lon":-74.01,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,3,3,3,80,51,0,3],"temperature_2m_max":[21.4,20.4,23.6,19.4,24.4,13.4,15.2,19.0],"temperature_2m_min":[12.0,13.8,14.8,14.3,13.8,7.5,6.6,10.5],"apparent_temperature_max":[20.5,21.6,24.8,17.0,23.9,7.4,9.7,15.8],"apparent_temperature_min":[9.4,14.2,14.3,10.8,8.3,0.0,2.0,7.1],"wind_speed_10m_max":[5.7,4.7,4.4,5.9,10.0,10.0,6.3,5.9],"precipitation_probability_max":[40,5,13,9,80,16,1,1]}},{"g":"big","name":"Los Angeles","st":"California","abbr":"CA","lat":34.05,"lon":-118.24,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[61,2,0,0,0,0,0,2],"temperature_2m_max":[20.4,23.9,29.2,31.5,33.7,32.7,30.7,27.0],"temperature_2m_min":[14.2,11.5,11.4,21.7,24.2,25.0,24.2,20.2],"apparent_temperature_max":[21.0,22.3,27.1,28.4,31.6,30.4,28.9,26.4],"apparent_temperature_min":[13.7,9.5,8.5,18.2,21.0,21.9,23.0,18.4],"wind_speed_10m_max":[3.5,4.3,4.5,3.0,2.9,5.7,4.4,5.1],"precipitation_probability_max":[35,0,0,0,0,0,0,1]}},{"g":"big","name":"Chicago","st":"Illinois","abbr":"IL","lat":41.88,"lon":-87.63,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,81,53,1,3,51],"temperature_2m_max":[30.6,26.3,16.9,16.8,14.3,13.0,17.6,14.8],"temperature_2m_min":[14.8,17.0,12.8,13.4,7.6,5.8,8.7,11.9],"apparent_temperature_max":[29.6,27.7,17.7,17.0,12.2,8.5,12.4,13.3],"apparent_temperature_min":[13.8,17.7,10.2,11.7,2.1,1.7,3.6,9.3],"wind_speed_10m_max":[6.5,4.7,6.1,5.3,8.6,5.4,6.5,5.8],"precipitation_probability_max":[3,22,52,87,62,1,2,9]}},{"g":"big","name":"Houston","st":"Texas","abbr":"TX","lat":29.76,"lon":-95.37,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,51,3,3,3],"temperature_2m_max":[29.0,32.7,30.2,32.5,31.3,25.4,28.4,29.8],"temperature_2m_min":[22.8,26.2,23.3,24.4,24.3,17.4,17.7,21.4],"apparent_temperature_max":[34.9,37.8,34.6,34.1,30.9,22.8,26.9,31.7],"apparent_temperature_min":[25.7,30.6,25.5,26.5,20.7,12.6,14.2,20.4],"wind_speed_10m_max":[5.0,4.7,5.3,5.2,6.7,6.0,3.4,3.6],"precipitation_probability_max":[37,24,8,8,6,1,2,30]}},{"g":"big","name":"Philadelphia","st":"Pennsylvania","abbr":"PA","lat":39.95,"lon":-75.17,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,1,61,3,80,1,0,3],"temperature_2m_max":[21.8,22.9,24.6,22.2,27.1,12.1,15.8,20.0],"temperature_2m_min":[13.0,12.9,16.7,14.7,12.4,7.4,6.2,9.3],"apparent_temperature_max":[21.9,24.4,26.7,20.8,26.6,6.6,11.1,16.5],"apparent_temperature_min":[11.7,13.0,16.8,12.0,7.1,1.6,2.9,7.3],"wind_speed_10m_max":[4.6,4.2,4.0,4.1,8.8,8.0,4.6,4.9],"precipitation_probability_max":[61,2,17,12,63,13,1,1]}},{"g":"big","name":"San Antonio","st":"Texas","abbr":"TX","lat":29.42,"lon":-98.49,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,82,3,3,3,3,3],"temperature_2m_max":[33.6,34.0,33.4,31.9,26.0,23.8,26.5,28.8],"temperature_2m_min":[23.4,25.9,24.3,20.7,17.9,14.0,15.0,18.8],"apparent_temperature_max":[37.5,36.2,35.4,32.5,25.2,21.1,25.2,29.2],"apparent_temperature_min":[25.9,29.7,27.4,23.0,11.8,8.8,12.1,19.6],"wind_speed_10m_max":[4.9,5.8,5.5,5.3,10.2,7.8,3.3,3.4],"precipitation_probability_max":[5,7,40,5,6,1,7,12]}},{"g":"big","name":"San Diego","st":"California","abbr":"CA","lat":32.72,"lon":-117.16,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[51,3,0,0,0,2,0,0],"temperature_2m_max":[21.4,21.9,26.9,31.0,31.8,31.2,28.4,23.5],"temperature_2m_min":[16.6,15.8,13.5,20.8,24.7,25.2,23.4,19.8],"apparent_temperature_max":[19.8,21.4,25.2,29.1,28.7,31.4,27.5,24.4],"apparent_temperature_min":[15.8,15.2,11.4,18.8,21.4,22.2,23.2,19.4],"wind_speed_10m_max":[4.3,3.5,4.9,8.3,7.5,5.1,4.8,5.2],"precipitation_probability_max":[27,1,0,0,0,4,1,1]}},{"g":"big","name":"Dallas","st":"Texas","abbr":"TX","lat":32.78,"lon":-96.8,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,3,3,3,53],"temperature_2m_max":[31.9,33.5,32.1,32.0,22.1,20.4,24.7,21.6],"temperature_2m_min":[21.4,25.0,24.4,22.4,16.4,12.7,15.8,17.2],"apparent_temperature_max":[34.6,35.7,36.0,32.1,20.8,18.0,21.9,20.3],"apparent_temperature_min":[23.5,29.0,28.9,23.7,11.5,9.1,12.5,17.3],"wind_speed_10m_max":[4.7,5.6,5.9,6.4,8.2,5.7,3.0,3.5],"precipitation_probability_max":[4,4,10,9,4,0,1,7]}},{"g":"big","name":"Jacksonville","st":"Florida","abbr":"FL","lat":30.33,"lon":-81.66,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,2,45,0,3,3,51,3],"temperature_2m_max":[28.1,27.5,26.8,32.7,33.6,26.9,26.0,28.1],"temperature_2m_min":[19.0,19.3,18.1,21.3,23.0,21.5,21.6,23.6],"apparent_temperature_max":[28.8,32.7,30.9,34.5,34.6,28.0,23.9,27.3],"apparent_temperature_min":[20.9,21.4,20.4,23.7,25.5,19.7,20.4,23.9],"wind_speed_10m_max":[5.1,3.0,2.6,5.2,4.7,7.6,7.1,5.7],"precipitation_probability_max":[0,0,0,1,6,11,14,20]}},{"g":"big","name":"Fort Worth","st":"Texas","abbr":"TX","lat":32.76,"lon":-97.33,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,1,0,3,3,3,53],"temperature_2m_max":[30.9,32.7,32.3,31.4,20.8,19.2,24.5,21.4],"temperature_2m_min":[21.3,24.2,23.9,21.3,14.7,10.5,14.5,17.1],"apparent_temperature_max":[33.8,34.9,34.0,32.0,18.2,16.3,21.8,18.9],"apparent_temperature_min":[23.2,28.0,27.1,18.2,9.8,7.0,11.5,17.4],"wind_speed_10m_max":[5.5,5.6,6.2,8.0,9.2,5.9,3.4,4.5],"precipitation_probability_max":[4,4,8,8,7,0,2,10]}},{"g":"big","name":"San Jose","st":"California","abbr":"CA","lat":37.34,"lon":-121.89,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,0,3,0,0,1,0,3],"temperature_2m_max":[21.4,22.9,25.7,29.8,32.3,31.0,24.2,19.9],"temperature_2m_min":[10.3,9.4,8.4,16.1,19.0,19.5,13.9,12.8],"apparent_temperature_max":[19.2,18.4,22.9,26.1,28.5,28.2,22.4,17.9],"apparent_temperature_min":[8.6,8.1,5.8,13.4,15.9,16.7,12.3,10.6],"wind_speed_10m_max":[4.5,5.3,3.8,3.1,3.5,3.1,4.1,5.2],"precipitation_probability_max":[0,0,0,0,0,0,0,14]}},{"g":"big","name":"Charlotte","st":"North Carolina","abbr":"NC","lat":35.23,"lon":-80.84,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,0,3,3,3,0,3],"temperature_2m_max":[28.7,28.2,30.7,30.2,29.7,18.1,18.3,23.1],"temperature_2m_min":[15.7,12.2,15.5,18.4,15.2,9.1,8.0,10.0],"apparent_temperature_max":[29.8,29.0,32.5,30.7,29.7,13.6,15.4,22.8],"apparent_temperature_min":[16.6,12.4,15.8,18.9,9.5,5.0,4.6,7.4],"wind_speed_10m_max":[3.7,2.6,2.7,2.7,7.4,7.5,3.0,1.6],"precipitation_probability_max":[1,1,1,1,3,1,1,0]}},{"g":"big","name":"San Francisco","st":"California","abbr":"CA","lat":37.77,"lon":-122.42,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,2,3,0,0,1,2,3],"temperature_2m_max":[19.6,22.2,22.5,28.3,28.8,22.6,16.2,16.7],"temperature_2m_min":[9.5,10.1,9.2,15.8,18.1,15.5,13.7,13.4],"apparent_temperature_max":[20.7,18.9,21.8,24.8,26.5,21.9,14.7,13.8],"apparent_temperature_min":[7.4,8.1,7.5,14.2,15.8,15.0,9.6,8.3],"wind_speed_10m_max":[4.4,5.9,6.0,3.6,3.2,3.3,7.6,10.0],"precipitation_probability_max":[0,0,0,0,0,0,0,19]}},{"g":"big","name":"Seattle","st":"Washington","abbr":"WA","lat":47.61,"lon":-122.33,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,3,63,51,51],"temperature_2m_max":[14.3,16.1,17.6,21.3,23.3,18.4,15.3,13.9],"temperature_2m_min":[2.9,7.1,10.5,9.5,10.1,10.1,7.5,8.7],"apparent_temperature_max":[13.3,14.8,17.6,19.7,20.8,16.0,12.4,10.2],"apparent_temperature_min":[0.6,4.3,8.2,8.3,8.5,8.8,6.0,6.2],"wind_speed_10m_max":[2.0,2.5,2.9,2.6,3.2,7.1,3.4,5.2],"precipitation_probability_max":[1,10,16,0,3,48,24,50]}},{"g":"big","name":"El Paso","st":"Texas","abbr":"TX","lat":31.76,"lon":-106.49,"tz":"America/Denver","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,0,0,3,61,63,0],"temperature_2m_max":[30.8,28.3,26.6,25.9,16.8,16.8,20.5,23.4],"temperature_2m_min":[19.5,17.4,15.6,15.7,13.0,11.9,10.9,17.0],"apparent_temperature_max":[30.7,26.9,24.8,20.0,8.1,13.7,18.7,21.8],"apparent_temperature_min":[19.5,16.3,13.8,5.5,2.9,5.2,9.2,16.1],"wind_speed_10m_max":[4.9,5.6,4.8,17.1,17.2,8.2,2.3,2.0],"precipitation_probability_max":[4,1,3,3,46,36,30,9]}},{"g":"big","name":"Detroit","st":"Michigan","abbr":"MI","lat":42.33,"lon":-83.05,"tz":"America/Detroit","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,65,61,51,3,3,3],"temperature_2m_max":[25.1,29.4,18.0,17.7,19.0,12.6,17.9,16.3],"temperature_2m_min":[14.5,18.6,11.9,11.8,8.2,4.5,7.0,12.3],"apparent_temperature_max":[26.7,28.0,17.9,16.0,19.2,8.0,12.8,12.9],"apparent_temperature_min":[13.8,18.3,9.6,9.1,1.7,-1.0,2.3,8.3],"wind_speed_10m_max":[4.3,7.1,4.2,4.4,8.9,7.0,5.7,4.6],"precipitation_probability_max":[2,16,44,75,75,1,0,6]}},{"g":"big","name":"Portland","st":"Oregon","abbr":"OR","lat":45.52,"lon":-122.68,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,3,3,3,53,51,61],"temperature_2m_max":[16.4,16.7,19.6,25.7,24.6,19.3,16.8,13.2],"temperature_2m_min":[5.0,5.5,9.5,11.5,13.2,11.8,8.1,9.4],"apparent_temperature_max":[15.4,15.7,19.5,22.1,22.6,16.4,13.4,10.7],"apparent_temperature_min":[3.0,3.2,7.1,10.8,11.2,10.0,6.1,7.2],"wind_speed_10m_max":[2.6,1.9,2.9,4.7,1.7,4.2,3.3,4.0],"precipitation_probability_max":[0,5,8,0,0,41,20,53]}},{"g":"big","name":"Memphis","st":"Tennessee","abbr":"TN","lat":35.15,"lon":-90.05,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,0,80,3,3,3,3,3],"temperature_2m_max":[32.5,33.0,30.5,33.8,26.5,20.7,24.8,26.1],"temperature_2m_min":[17.8,18.8,23.6,24.7,13.1,8.2,12.4,18.3],"apparent_temperature_max":[33.1,35.8,34.8,32.5,25.3,16.3,21.4,26.7],"apparent_temperature_min":[18.1,17.8,26.3,22.4,8.2,3.9,9.3,17.3],"wind_speed_10m_max":[4.8,4.5,5.3,4.5,7.2,5.6,3.6,3.9],"precipitation_probability_max":[0,3,46,15,1,0,0,3]}},{"g":"big","name":"Las Vegas","st":"Nevada","abbr":"NV","lat":36.17,"lon":-115.14,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,0,0,3,0,0,3],"temperature_2m_max":[22.8,18.4,24.0,26.0,27.2,26.2,26.1,28.7],"temperature_2m_min":[17.0,11.0,10.3,19.9,20.8,20.5,19.3,20.0],"apparent_temperature_max":[18.9,13.5,20.9,19.4,23.0,23.0,23.2,24.2],"apparent_temperature_min":[13.3,8.0,6.4,15.2,16.7,17.9,17.1,17.9],"wind_speed_10m_max":[8.0,10.1,6.4,9.9,7.4,3.7,3.0,8.6],"precipitation_probability_max":[19,3,1,0,5,6,1,1]}},{"g":"big","name":"Louisville","st":"Kentucky","abbr":"KY","lat":38.25,"lon":-85.76,"tz":"America/Kentucky/Louisville","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,81,61,3,3,2,3],"temperature_2m_max":[28.1,31.1,30.1,29.9,24.0,15.6,21.4,23.6],"temperature_2m_min":[11.7,17.4,19.6,21.1,9.3,6.7,7.4,12.9],"apparent_temperature_max":[31.2,30.2,33.3,31.2,23.3,11.8,17.8,22.5],"apparent_temperature_min":[11.3,17.8,20.2,24.0,5.6,3.1,4.3,10.0],"wind_speed_10m_max":[2.3,4.8,5.0,4.3,7.1,4.1,4.3,3.9],"precipitation_probability_max":[0,1,69,55,20,1,1,4]}},{"g":"big","name":"Baltimore","st":"Maryland","abbr":"MD","lat":39.29,"lon":-76.61,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[51,2,3,53,51,3,0,3],"temperature_2m_max":[22.6,25.0,28.6,20.5,29.0,13.1,17.1,20.4],"temperature_2m_min":[14.4,13.0,16.4,15.0,12.3,8.1,7.2,9.2],"apparent_temperature_max":[22.9,26.7,31.0,22.0,28.7,7.4,12.5,17.0],"apparent_temperature_min":[13.9,13.4,16.9,13.5,6.3,1.9,4.3,6.5],"wind_speed_10m_max":[6.2,3.8,4.0,4.2,9.9,7.7,3.9,4.2],"precipitation_probability_max":[47,3,14,36,27,9,1,1]}},{"g":"big","name":"Milwaukee","st":"Wisconsin","abbr":"WI","lat":43.04,"lon":-87.91,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,51,81,51,0,3,51],"temperature_2m_max":[29.9,25.5,14.7,14.5,11.8,12.6,16.8,16.9],"temperature_2m_min":[14.7,15.6,11.9,12.8,5.9,4.0,7.4,10.9],"apparent_temperature_max":[30.4,24.8,14.1,14.1,7.5,6.9,11.6,15.1],"apparent_temperature_min":[13.5,15.4,9.4,9.4,0.0,0.1,1.9,8.1],"wind_speed_10m_max":[5.7,5.6,4.9,7.5,11.1,6.6,8.1,7.0],"precipitation_probability_max":[8,30,27,80,62,0,3,12]}},{"g":"big","name":"Albuquerque","st":"New Mexico","abbr":"NM","lat":35.08,"lon":-106.65,"tz":"America/Denver","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,3,1,0,0,3,51,2],"temperature_2m_max":[25.8,25.1,20.6,21.3,18.0,15.0,14.1,20.3],"temperature_2m_min":[14.2,12.8,10.7,11.1,9.8,9.9,10.9,12.1],"apparent_temperature_max":[23.7,21.7,15.3,16.9,10.6,10.5,12.8,18.0],"apparent_temperature_min":[13.8,11.1,6.6,5.9,5.0,5.9,7.4,10.4],"wind_speed_10m_max":[6.0,6.7,6.2,11.9,9.4,4.6,5.8,5.5],"precipitation_probability_max":[4,4,10,1,4,12,12,2]}},{"g":"big","name":"Tucson","st":"Arizona","abbr":"AZ","lat":32.22,"lon":-110.97,"tz":"America/Phoenix","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,63,3,0,3,53,1,3],"temperature_2m_max":[27.3,25.0,25.1,29.4,25.4,21.0,25.4,28.2],"temperature_2m_min":[19.6,18.2,14.2,19.3,19.5,14.8,17.4,21.5],"apparent_temperature_max":[26.0,24.4,22.6,26.9,18.5,16.7,24.8,27.5],"apparent_temperature_min":[20.2,17.0,11.4,16.7,12.5,8.7,14.5,19.9],"wind_speed_10m_max":[4.8,6.9,5.3,9.1,11.9,10.5,4.6,3.5],"precipitation_probability_max":[9,18,1,0,7,14,5,5]}},{"g":"big","name":"Fresno","st":"California","abbr":"CA","lat":36.74,"lon":-119.79,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,3,0,0,0,1,3],"temperature_2m_max":[21.8,24.5,27.0,29.5,32.5,33.6,31.9,24.5],"temperature_2m_min":[14.8,9.9,7.9,18.0,19.4,21.1,20.5,16.4],"apparent_temperature_max":[20.6,21.3,24.3,26.4,29.0,29.7,29.1,20.1],"apparent_temperature_min":[11.9,7.2,4.1,15.1,16.4,18.3,17.1,11.5],"wind_speed_10m_max":[4.8,4.7,2.5,2.2,2.4,3.6,3.6,6.9],"precipitation_probability_max":[5,0,0,0,0,0,0,3]}},{"g":"big","name":"Mesa","st":"Arizona","abbr":"AZ","lat":33.42,"lon":-111.83,"tz":"America/Phoenix","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,63,0,0,3,51,3,0],"temperature_2m_max":[27.3,26.6,26.6,32.1,29.4,23.4,26.2,29.6],"temperature_2m_min":[20.1,18.1,11.6,18.8,22.5,19.3,19.3,22.2],"apparent_temperature_max":[26.0,25.9,24.0,26.9,25.8,17.6,25.9,28.4],"apparent_temperature_min":[20.8,15.8,9.4,14.9,17.7,13.9,17.0,20.8],"wind_speed_10m_max":[5.6,5.7,3.7,10.1,8.8,8.4,2.9,3.6],"precipitation_probability_max":[28,29,0,0,8,11,5,4]}},{"g":"big","name":"Kansas City","st":"Missouri","abbr":"MO","lat":39.1,"lon":-94.58,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[2,65,63,63,3,0,51,61],"temperature_2m_max":[31.8,32.9,21.0,24.9,13.6,15.2,19.0,14.7],"temperature_2m_min":[22.1,20.6,15.4,14.1,8.1,5.8,8.3,13.0],"apparent_temperature_max":[31.1,35.1,23.8,25.9,9.8,11.8,14.9,13.5],"apparent_temperature_min":[21.8,18.6,15.3,9.9,3.3,3.0,4.4,12.1],"wind_speed_10m_max":[7.0,9.6,3.7,8.3,7.4,3.8,6.5,4.6],"precipitation_probability_max":[1,77,57,93,8,0,11,13]}},{"g":"big","name":"Omaha","st":"Nebraska","abbr":"NE","lat":41.26,"lon":-95.94,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,81,3,0,3,3],"temperature_2m_max":[32.7,15.2,14.4,16.4,11.6,15.7,18.8,17.4],"temperature_2m_min":[14.2,11.3,8.7,10.2,5.7,2.9,7.2,10.6],"apparent_temperature_max":[32.8,13.8,11.8,17.7,6.0,9.8,14.3,13.2],"apparent_temperature_min":[12.7,9.7,5.8,4.0,-0.3,-1.3,2.1,7.3],"wind_speed_10m_max":[5.9,3.7,4.4,9.3,9.8,8.1,8.3,4.9],"precipitation_probability_max":[2,7,15,90,3,0,6,9]}},{"g":"big","name":"Colorado Springs","st":"Colorado","abbr":"CO","lat":38.83,"lon":-104.82,"tz":"America/Denver","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,63,61,0,3,3,3],"temperature_2m_max":[26.7,23.8,11.9,7.6,14.8,20.0,18.6,15.8],"temperature_2m_min":[15.5,10.3,5.5,5.3,4.9,5.6,10.9,8.6],"apparent_temperature_max":[23.5,22.0,10.5,3.4,9.5,15.6,14.6,10.3],"apparent_temperature_min":[10.7,7.6,1.5,-0.6,0.8,2.6,7.9,5.5],"wind_speed_10m_max":[6.8,6.7,4.5,9.4,6.2,4.9,5.2,7.2],"precipitation_probability_max":[8,13,81,68,19,2,6,6]}},{"g":"big","name":"Miami","st":"Florida","abbr":"FL","lat":25.76,"lon":-80.19,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,2,3,53,95,53,95,96],"temperature_2m_max":[32.5,30.7,30.6,30.3,30.2,29.9,28.5,28.4],"temperature_2m_min":[24.3,23.7,22.8,26.4,27.9,27.9,27.3,26.8],"apparent_temperature_max":[39.7,35.4,34.3,34.4,34.7,32.9,29.4,30.2],"apparent_temperature_min":[29.1,26.7,25.5,30.0,30.7,28.8,28.4,28.4],"wind_speed_10m_max":[4.9,4.3,5.0,6.5,5.9,7.9,9.0,8.6],"precipitation_probability_max":[8,4,22,22,28,60,85,87]}},{"g":"big","name":"Virginia Beach","st":"Virginia","abbr":"VA","lat":36.85,"lon":-75.98,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,2,3,3,53,3,0,2],"temperature_2m_max":[22.4,25.9,31.7,23.2,28.5,17.0,15.5,20.1],"temperature_2m_min":[15.7,13.5,17.1,19.6,17.9,12.8,12.9,15.2],"apparent_temperature_max":[23.4,28.1,33.5,23.5,27.4,8.9,12.8,18.4],"apparent_temperature_min":[16.2,13.5,17.3,18.5,11.7,5.1,7.4,13.1],"wind_speed_10m_max":[6.3,3.6,4.1,7.3,14.4,13.7,6.6,5.8],"precipitation_probability_max":[4,2,3,6,37,37,3,2]}},{"g":"big","name":"Long Beach","st":"California","abbr":"CA","lat":33.77,"lon":-118.19,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,45,0,0,0,0,0,2],"temperature_2m_max":[19.9,22.2,27.3,31.7,34.6,32.5,28.6,25.0],"temperature_2m_min":[15.5,12.1,10.6,21.7,23.8,25.7,23.1,19.6],"apparent_temperature_max":[19.9,21.2,24.6,28.6,31.5,31.2,27.5,25.4],"apparent_temperature_min":[15.1,11.3,8.9,19.3,20.7,23.0,23.8,18.7],"wind_speed_10m_max":[4.0,4.8,4.3,3.4,5.7,5.0,3.5,3.9],"precipitation_probability_max":[31,0,0,0,0,0,0,1]}},{"g":"big","name":"Oakland","st":"California","abbr":"CA","lat":37.8,"lon":-122.27,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,1,3,0,0,1,3,3],"temperature_2m_max":[20.0,22.6,22.3,30.9,32.3,28.1,17.8,18.6],"temperature_2m_min":[9.0,9.1,9.5,13.1,15.9,14.2,11.6,11.4],"apparent_temperature_max":[19.2,18.6,21.8,27.1,29.6,26.5,17.0,16.4],"apparent_temperature_min":[6.4,7.4,6.8,10.7,12.7,13.9,9.9,9.8],"wind_speed_10m_max":[3.6,5.1,2.6,3.9,3.5,3.2,3.4,5.0],"precipitation_probability_max":[0,0,0,0,0,0,0,15]}},{"g":"big","name":"Minneapolis","st":"Minnesota","abbr":"MN","lat":44.98,"lon":-93.27,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,55,3,63,51,1,3,2],"temperature_2m_max":[26.7,14.0,11.2,11.6,11.4,15.5,18.9,17.0],"temperature_2m_min":[13.4,10.0,7.8,8.6,6.3,6.1,9.2,9.8],"apparent_temperature_max":[28.9,11.4,9.0,9.9,5.7,9.5,14.6,13.3],"apparent_temperature_min":[12.1,7.4,5.5,3.2,0.0,0.7,4.7,5.7],"wind_speed_10m_max":[4.3,3.9,2.9,6.5,8.4,6.8,6.1,3.9],"precipitation_probability_max":[3,14,4,43,3,0,2,2]}},{"g":"big","name":"Tulsa","st":"Oklahoma","abbr":"OK","lat":36.15,"lon":-95.99,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,3,81,80,3,3,3,63],"temperature_2m_max":[32.8,33.4,27.4,28.5,17.0,17.8,21.2,18.7],"temperature_2m_min":[20.9,23.0,21.2,17.5,11.9,7.8,11.4,12.7],"apparent_temperature_max":[31.6,35.6,29.9,28.7,13.4,15.1,17.4,16.2],"apparent_temperature_min":[21.0,25.5,22.7,14.3,6.4,4.4,7.9,11.6],"wind_speed_10m_max":[6.4,6.1,5.9,7.7,8.1,4.3,5.1,4.0],"precipitation_probability_max":[0,21,78,71,35,0,2,7]}},{"g":"big","name":"Tampa","st":"Florida","abbr":"FL","lat":27.95,"lon":-82.46,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,65,3,51,95,51,3,51],"temperature_2m_max":[31.3,28.2,29.1,31.9,32.9,28.4,26.1,29.3],"temperature_2m_min":[19.6,19.9,21.3,22.3,23.9,24.1,22.5,23.0],"apparent_temperature_max":[33.7,32.3,33.1,36.4,37.9,30.0,25.9,30.1],"apparent_temperature_min":[22.5,22.5,24.5,24.6,27.8,23.5,23.6,24.2],"wind_speed_10m_max":[4.5,2.9,3.5,4.3,4.1,8.0,8.8,7.6],"precipitation_probability_max":[0,3,3,19,40,13,21,22]}},{"g":"big","name":"Arlington","st":"Texas","abbr":"TX","lat":32.74,"lon":-97.11,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,1,0,3,3,3,51],"temperature_2m_max":[30.2,32.8,32.2,32.0,21.9,20.5,25.0,22.3],"temperature_2m_min":[21.5,24.4,24.4,21.8,16.4,12.6,16.2,18.0],"apparent_temperature_max":[33.6,35.1,35.1,31.8,19.5,17.3,21.9,19.6],"apparent_temperature_min":[22.5,27.8,27.5,20.3,11.2,8.7,12.9,17.1],"wind_speed_10m_max":[5.7,6.0,6.0,6.9,8.3,5.8,3.1,4.0],"precipitation_probability_max":[5,3,8,6,4,0,1,9]}},{"g":"big","name":"New Orleans","st":"Louisiana","abbr":"LA","lat":29.95,"lon":-90.07,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,45,45,0,3,3,3,51],"temperature_2m_max":[31.6,32.6,30.5,31.8,31.5,24.7,25.9,25.8],"temperature_2m_min":[17.1,19.4,18.2,22.8,23.9,17.3,18.8,23.6],"apparent_temperature_max":[33.9,34.7,33.0,32.5,32.0,22.1,25.8,26.9],"apparent_temperature_min":[19.0,21.9,21.0,25.2,23.9,12.6,17.5,25.1],"wind_speed_10m_max":[3.0,3.0,3.5,4.9,7.8,7.5,6.5,7.3],"precipitation_probability_max":[0,0,0,0,8,3,11,17]}},{"g":"big","name":"Wichita","st":"Kansas","abbr":"KS","lat":37.69,"lon":-97.34,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,65,65,81,3,3,51,55],"temperature_2m_max":[31.2,33.2,21.8,24.5,14.9,16.2,20.6,16.9],"temperature_2m_min":[19.6,19.0,18.6,15.0,10.3,8.4,10.6,14.5],"apparent_temperature_max":[30.6,35.0,25.1,23.4,10.4,12.3,16.3,17.2],"apparent_temperature_min":[18.9,19.9,17.8,10.0,4.3,5.1,6.2,13.6],"wind_speed_10m_max":[7.6,5.9,6.3,9.1,8.2,4.5,7.5,5.0],"precipitation_probability_max":[1,51,89,92,9,0,8,10]}},{"g":"big","name":"Cleveland","st":"Ohio","abbr":"OH","lat":41.5,"lon":-81.69,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,53,53,81,51,3,51],"temperature_2m_max":[26.1,30.5,20.1,20.7,21.0,8.9,17.5,18.0],"temperature_2m_min":[15.9,19.1,13.7,12.0,9.1,5.9,5.5,12.1],"apparent_temperature_max":[26.4,28.6,21.3,20.1,20.9,5.0,13.0,15.9],"apparent_temperature_min":[16.7,18.6,12.0,9.4,1.1,-1.2,0.5,7.2],"wind_speed_10m_max":[4.2,7.4,4.1,8.0,13.8,12.3,5.7,6.4],"precipitation_probability_max":[2,10,33,76,76,30,1,5]}},{"g":"big","name":"Bakersfield","st":"California","abbr":"CA","lat":35.37,"lon":-119.02,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,0,0,0,0,1,3],"temperature_2m_max":[21.8,23.4,27.7,32.1,35.8,34.4,34.4,27.7],"temperature_2m_min":[14.9,9.3,11.4,13.3,16.2,17.0,17.3,14.2],"apparent_temperature_max":[19.8,21.0,24.8,27.9,30.0,30.9,30.8,24.2],"apparent_temperature_min":[12.5,6.4,7.9,10.5,13.4,14.3,14.1,12.0],"wind_speed_10m_max":[3.9,2.3,2.5,4.2,9.6,4.9,4.0,7.0],"precipitation_probability_max":[4,0,0,0,0,0,0,2]}},{"g":"big","name":"Anaheim","st":"California","abbr":"CA","lat":33.84,"lon":-117.91,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,1,0,0,0,0,0,0],"temperature_2m_max":[21.0,24.3,29.4,33.3,34.4,33.2,29.7,26.2],"temperature_2m_min":[15.2,12.1,12.9,21.7,26.5,25.3,23.7,19.6],"apparent_temperature_max":[20.4,23.5,27.1,30.0,29.3,31.7,27.9,25.7],"apparent_temperature_min":[15.7,10.6,9.8,18.4,19.5,22.1,23.1,18.2],"wind_speed_10m_max":[4.1,4.1,4.5,7.1,10.4,5.2,4.3,5.3],"precipitation_probability_max":[38,0,0,0,0,0,1,1]}},{"g":"big","name":"Pittsburgh","st":"Pennsylvania","abbr":"PA","lat":40.44,"lon":-79.99,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,2,51,51,80,51,3,3],"temperature_2m_max":[20.5,25.0,22.8,22.2,21.7,11.3,17.1,19.1],"temperature_2m_min":[14.4,13.8,14.8,12.3,8.6,5.0,4.1,8.3],"apparent_temperature_max":[21.5,26.1,24.5,22.7,22.1,6.6,13.7,16.8],"apparent_temperature_min":[14.6,12.9,14.2,10.6,4.4,0.5,1.1,5.9],"wind_speed_10m_max":[3.7,5.2,3.5,4.2,8.1,6.5,3.2,4.0],"precipitation_probability_max":[1,6,61,60,71,14,1,2]}},{"g":"big","name":"St. Louis","st":"Missouri","abbr":"MO","lat":38.63,"lon":-90.2,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,0,63,80,3,0,3,51],"temperature_2m_max":[32.9,33.4,27.0,30.6,23.3,16.9,20.8,17.6],"temperature_2m_min":[17.0,18.5,21.4,20.5,10.3,7.9,8.9,14.1],"apparent_temperature_max":[33.3,34.8,30.1,31.1,23.6,13.9,16.3,15.9],"apparent_temperature_min":[17.4,17.9,23.0,22.7,6.0,4.5,5.2,11.6],"wind_speed_10m_max":[4.6,4.0,4.6,5.2,7.7,4.6,4.4,2.6],"precipitation_probability_max":[0,11,50,83,34,0,1,7]}},{"g":"big","name":"Cincinnati","st":"Ohio","abbr":"OH","lat":39.1,"lon":-84.51,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,45,81,95,51,1,2,3],"temperature_2m_max":[28.2,32.4,31.1,23.8,21.4,14.0,20.7,21.3],"temperature_2m_min":[12.0,16.4,18.9,16.7,9.0,5.2,3.8,10.3],"apparent_temperature_max":[29.0,30.2,33.7,27.8,21.6,10.7,17.3,20.2],"apparent_temperature_min":[11.6,16.1,19.2,17.1,5.2,1.7,0.7,7.4],"wind_speed_10m_max":[3.2,5.9,5.6,3.8,7.5,4.3,3.6,4.2],"precipitation_probability_max":[1,2,91,73,34,1,1,6]}},{"g":"big","name":"Orlando","st":"Florida","abbr":"FL","lat":28.54,"lon":-81.38,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,2,3,51,80,80,81,55],"temperature_2m_max":[32.3,29.4,29.5,32.0,34.2,28.7,24.3,27.7],"temperature_2m_min":[19.3,19.7,21.0,22.9,24.4,22.4,22.1,23.2],"apparent_temperature_max":[32.7,33.5,32.7,35.6,37.6,30.0,25.3,29.2],"apparent_temperature_min":[20.7,22.1,23.9,25.4,28.4,23.9,23.5,25.3],"wind_speed_10m_max":[4.6,4.2,4.7,4.5,3.2,7.7,6.2,6.7],"precipitation_probability_max":[0,2,7,19,55,25,32,25]}},{"g":"big","name":"Anchorage","st":"Alaska","abbr":"AK","lat":61.22,"lon":-149.9,"tz":"America/Anchorage","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[85,85,51,85,53,85,85,2],"temperature_2m_max":[7.1,6.8,5.6,6.5,8.3,3.6,3.0,3.4],"temperature_2m_min":[3.5,1.8,0.3,1.9,1.2,1.6,0.0,-2.3],"apparent_temperature_max":[5.2,3.7,2.3,3.0,5.0,0.9,0.8,-0.1],"apparent_temperature_min":[1.1,-0.9,-2.8,-1.2,-1.3,-1.4,-2.8,-5.7],"wind_speed_10m_max":[2.7,2.4,3.4,5.5,2.6,3.0,1.5,2.2],"precipitation_probability_max":[100,43,47,50,39,22,31,28]}},{"g":"big","name":"Buffalo","st":"New York","abbr":"NY","lat":42.89,"lon":-78.88,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,51,81,85,2,3],"temperature_2m_max":[19.0,24.4,17.8,17.2,19.5,8.7,14.7,17.5],"temperature_2m_min":[12.0,16.4,12.5,9.5,6.7,2.4,5.2,11.4],"apparent_temperature_max":[18.1,22.8,17.8,14.3,18.9,3.3,9.8,13.8],"apparent_temperature_min":[11.2,16.1,10.5,6.6,1.6,-3.1,1.9,7.2],"wind_speed_10m_max":[7.0,8.7,4.9,4.2,10.9,7.2,6.9,6.8],"precipitation_probability_max":[3,47,12,64,82,48,0,5]}},{"g":"ca","name":"Berkeley","st":"California","abbr":"CA","lat":37.872,"lon":-122.273,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,3,1,0,0,3,3,3],"temperature_2m_max":[19.1,23.7,21.2,29.6,30.2,26.5,17.1,18.2],"temperature_2m_min":[10.6,10.3,11.7,12.0,18.5,16.6,13.2,13.1],"apparent_temperature_max":[18.8,20.1,20.9,26.6,27.8,25.2,16.1,15.7],"apparent_temperature_min":[8.2,7.6,8.7,9.6,15.1,16.6,11.1,11.1],"wind_speed_10m_max":[3.6,3.7,3.3,4.2,2.3,2.7,4.6,4.9],"precipitation_probability_max":[0,0,0,0,0,0,0,17]}},{"g":"ca","name":"Chula Vista","st":"California","abbr":"CA","lat":32.64,"lon":-117.084,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,3,0,0,0,3,0,0],"temperature_2m_max":[21.4,21.2,26.2,32.0,33.0,31.9,30.2,24.8],"temperature_2m_min":[16.7,15.0,12.4,15.6,24.9,25.5,23.6,19.7],"apparent_temperature_max":[19.9,20.5,24.0,29.9,31.7,31.1,28.7,25.6],"apparent_temperature_min":[16.0,14.6,10.5,13.4,21.8,22.9,23.2,19.7],"wind_speed_10m_max":[5.0,3.9,4.8,3.8,5.6,5.0,4.3,4.8],"precipitation_probability_max":[30,1,0,0,0,4,0,0]}},{"g":"ca","name":"Corona","st":"California","abbr":"CA","lat":33.875,"lon":-117.566,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[55,0,0,0,0,0,0,0],"temperature_2m_max":[17.6,24.4,29.8,31.6,32.8,32.4,31.1,29.0],"temperature_2m_min":[14.0,10.1,12.5,16.6,24.2,23.7,23.3,19.6],"apparent_temperature_max":[17.4,22.7,25.7,24.4,28.9,29.5,29.1,26.9],"apparent_temperature_min":[13.6,9.0,8.8,12.9,18.3,21.0,21.4,20.3],"wind_speed_10m_max":[6.7,4.2,3.7,10.8,8.9,5.1,3.8,5.6],"precipitation_probability_max":[37,0,0,0,0,0,0,0]}},{"g":"ca","name":"Costa Mesa","st":"California","abbr":"CA","lat":33.641,"lon":-117.919,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[65,2,0,0,0,0,0,0],"temperature_2m_max":[20.1,22.1,27.3,33.3,34.7,32.6,29.2,24.8],"temperature_2m_min":[15.4,11.9,12.0,14.8,26.6,25.6,23.1,19.5],"apparent_temperature_max":[20.4,21.5,25.0,28.9,30.1,31.8,27.8,25.0],"apparent_temperature_min":[15.0,10.9,9.8,13.0,18.9,22.7,23.4,18.3],"wind_speed_10m_max":[4.0,3.8,4.8,9.6,11.3,4.8,4.0,4.8],"precipitation_probability_max":[25,0,0,0,0,0,0,0]}},{"g":"ca","name":"Elk Grove","st":"California","abbr":"CA","lat":38.409,"lon":-121.372,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,0,3,0,0,3,3,3],"temperature_2m_max":[22.5,25.4,27.5,29.7,31.0,31.2,27.3,21.6],"temperature_2m_min":[8.8,7.8,6.8,11.7,16.1,16.7,12.1,10.5],"apparent_temperature_max":[20.6,20.0,23.4,26.7,28.1,27.9,24.5,18.0],"apparent_temperature_min":[7.0,4.4,3.7,8.3,13.5,14.4,10.6,8.2],"wind_speed_10m_max":[3.9,5.5,2.6,2.6,2.0,2.9,6.5,5.5],"precipitation_probability_max":[0,0,0,0,0,0,0,16]}},{"g":"ca","name":"Fontana","st":"California","abbr":"CA","lat":34.092,"lon":-117.435,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,1,0,0,0,0,0,1],"temperature_2m_max":[15.9,22.9,28.1,28.9,30.9,31.4,29.4,27.2],"temperature_2m_min":[12.3,10.3,14.3,20.5,22.2,21.8,22.1,18.6],"apparent_temperature_max":[15.7,21.4,23.0,21.4,24.5,29.8,27.0,24.5],"apparent_temperature_min":[12.0,8.3,9.6,15.4,14.5,18.3,19.8,18.6],"wind_speed_10m_max":[3.6,6.0,7.3,11.3,12.9,5.7,3.5,5.7],"precipitation_probability_max":[37,0,0,0,0,0,0,0]}},{"g":"ca","name":"Fremont","st":"California","abbr":"CA","lat":37.548,"lon":-121.989,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,0,0,0,0,0,0,3],"temperature_2m_max":[20.8,23.9,26.0,31.0,32.6,29.6,20.8,18.9],"temperature_2m_min":[10.2,9.2,9.8,11.3,18.5,18.2,13.9,13.5],"apparent_temperature_max":[19.3,20.4,23.4,27.8,30.1,27.6,19.2,16.2],"apparent_temperature_min":[7.6,6.9,7.7,10.3,15.4,16.3,12.9,11.0],"wind_speed_10m_max":[4.5,5.3,3.7,2.2,2.7,3.1,4.5,5.6],"precipitation_probability_max":[0,0,0,0,0,0,0,17]}},{"g":"ca","name":"Garden Grove","st":"California","abbr":"CA","lat":33.774,"lon":-117.941,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[65,3,0,0,0,0,0,0],"temperature_2m_max":[21.2,23.8,28.6,33.5,34.6,33.4,29.9,26.4],"temperature_2m_min":[15.4,12.2,11.9,16.3,26.6,25.5,23.5,19.6],"apparent_temperature_max":[22.0,23.8,26.3,30.2,29.4,31.9,28.0,25.9],"apparent_temperature_min":[15.6,11.4,9.7,12.6,19.7,22.3,23.3,18.4],"wind_speed_10m_max":[4.6,4.3,4.6,7.1,10.4,5.2,4.3,5.3],"precipitation_probability_max":[33,0,0,0,0,0,0,0]}},{"g":"ca","name":"Glendale","st":"California","abbr":"CA","lat":34.143,"lon":-118.255,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[55,0,0,0,0,0,0,2],"temperature_2m_max":[20.9,23.5,29.2,32.2,33.7,32.0,30.3,27.0],"temperature_2m_min":[13.4,11.1,12.4,17.1,23.3,23.8,23.4,19.0],"apparent_temperature_max":[19.9,21.8,27.0,30.1,31.9,29.1,28.5,25.9],"apparent_temperature_min":[12.1,9.3,8.9,13.6,19.7,20.5,21.6,18.2],"wind_speed_10m_max":[3.4,4.4,4.2,3.9,4.8,4.1,3.6,4.5],"precipitation_probability_max":[31,0,0,0,0,0,0,0]}},{"g":"ca","name":"Huntington Beach","st":"California","abbr":"CA","lat":33.66,"lon":-117.999,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[51,1,0,0,0,0,0,0],"temperature_2m_max":[20.2,21.6,25.8,29.0,32.4,29.5,25.5,23.1],"temperature_2m_min":[15.3,11.3,11.0,14.3,26.5,23.8,21.9,19.7],"apparent_temperature_max":[19.3,21.2,23.8,27.5,28.4,30.0,25.4,23.7],"apparent_temperature_min":[15.1,9.9,8.7,12.1,18.8,22.9,22.8,18.4],"wind_speed_10m_max":[4.9,4.4,5.6,6.5,12.8,5.7,4.1,5.8],"precipitation_probability_max":[22,0,0,0,0,0,0,0]}},{"g":"ca","name":"Irvine","st":"California","abbr":"CA","lat":33.669,"lon":-117.823,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,2,0,0,0,0,0,0],"temperature_2m_max":[20.7,23.1,29.5,33.3,34.3,32.6,29.9,25.7],"temperature_2m_min":[15.6,13.0,13.3,16.2,25.5,25.3,23.7,19.4],"apparent_temperature_max":[19.8,22.8,27.5,26.4,30.7,32.3,28.3,25.5],"apparent_temperature_min":[15.5,11.8,11.5,14.3,19.0,22.5,23.1,18.7],"wind_speed_10m_max":[4.3,4.3,4.9,11.3,10.2,4.4,4.1,4.4],"precipitation_probability_max":[32,0,0,0,0,0,0,0]}},{"g":"ca","name":"Ladera Ranch","st":"California","abbr":"CA","lat":33.571,"lon":-117.636,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,2,0,0,0,0,0,0],"temperature_2m_max":[19.5,21.8,28.2,32.3,33.0,31.1,27.9,24.1],"temperature_2m_min":[13.7,12.6,13.7,17.6,22.6,23.9,21.4,17.9],"apparent_temperature_max":[18.6,21.9,27.1,29.4,30.2,30.7,26.4,24.0],"apparent_temperature_min":[13.1,10.8,10.7,14.5,18.4,20.8,21.0,17.6],"wind_speed_10m_max":[4.0,4.5,5.0,11.3,6.7,4.4,3.9,4.3],"precipitation_probability_max":[42,2,0,0,0,0,0,0]}},{"g":"ca","name":"Laguna Beach","st":"California","abbr":"CA","lat":33.542,"lon":-117.783,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,2,0,0,0,0,0,0],"temperature_2m_max":[20.5,21.4,26.9,33.4,34.4,32.7,30.0,25.8],"temperature_2m_min":[15.2,12.8,14.4,18.5,25.6,25.4,23.8,19.5],"apparent_temperature_max":[20.8,21.1,24.2,26.6,30.8,32.4,28.4,25.6],"apparent_temperature_min":[14.8,10.8,11.9,15.5,19.1,22.6,23.2,18.9],"wind_speed_10m_max":[5.6,4.4,4.2,11.3,10.2,4.4,4.1,4.4],"precipitation_probability_max":[26,1,0,0,0,0,0,0]}},{"g":"ca","name":"Lancaster","st":"California","abbr":"CA","lat":34.698,"lon":-118.137,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,0,0,0,0,0,3],"temperature_2m_max":[17.0,19.9,24.1,26.7,26.9,27.1,29.5,25.5],"temperature_2m_min":[11.1,8.5,5.2,12.0,17.5,15.7,17.6,14.2],"apparent_temperature_max":[13.5,16.0,19.9,19.7,19.6,23.2,27.1,19.7],"apparent_temperature_min":[7.6,4.9,1.6,8.4,12.3,13.0,14.2,10.5],"wind_speed_10m_max":[6.1,4.9,3.4,12.6,11.8,5.8,8.4,11.4],"precipitation_probability_max":[6,0,0,0,0,0,0,0]}},{"g":"ca","name":"Mission Viejo","st":"California","abbr":"CA","lat":33.6,"lon":-117.672,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,2,0,0,0,0,0,0],"temperature_2m_max":[20.2,22.2,29.6,32.6,33.3,31.4,28.2,24.3],"temperature_2m_min":[14.1,12.4,13.4,17.1,22.8,24.1,21.7,18.2],"apparent_temperature_max":[19.1,22.2,27.7,29.7,30.5,31.0,26.7,24.3],"apparent_temperature_min":[14.1,10.8,10.4,13.9,18.7,21.0,21.3,18.0],"wind_speed_10m_max":[4.2,4.0,4.8,11.3,6.7,4.4,3.9,4.3],"precipitation_probability_max":[36,2,0,0,0,0,0,0]}},{"g":"ca","name":"Modesto","st":"California","abbr":"CA","lat":37.639,"lon":-120.997,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,3,0,0,0,0,3],"temperature_2m_max":[23.0,24.9,28.2,30.4,32.7,33.1,30.4,21.3],"temperature_2m_min":[10.9,9.0,7.4,12.2,15.3,17.1,13.4,11.6],"apparent_temperature_max":[20.5,19.3,24.6,26.8,30.1,29.3,28.6,17.4],"apparent_temperature_min":[9.2,6.4,3.9,8.7,12.0,14.2,12.1,9.8],"wind_speed_10m_max":[3.8,5.6,2.7,2.6,2.3,3.4,5.5,7.2],"precipitation_probability_max":[3,0,0,0,0,0,0,11]}},{"g":"ca","name":"Moreno Valley","st":"California","abbr":"CA","lat":33.938,"lon":-117.231,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,1,0,0,2,0,0,1],"temperature_2m_max":[15.5,21.2,26.1,29.4,29.8,29.0,28.9,27.5],"temperature_2m_min":[12.5,10.4,10.6,15.8,16.2,17.7,17.7,14.2],"apparent_temperature_max":[15.2,18.5,24.1,27.9,24.9,25.8,27.1,25.6],"apparent_temperature_min":[12.1,9.0,7.4,11.6,13.7,15.6,15.7,14.2],"wind_speed_10m_max":[3.8,5.7,3.4,5.3,10.1,7.0,4.4,6.0],"precipitation_probability_max":[47,0,0,0,0,1,0,1]}},{"g":"ca","name":"Newport Beach","st":"California","abbr":"CA","lat":33.619,"lon":-117.929,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[65,2,0,0,0,0,0,0],"temperature_2m_max":[20.2,21.9,27.1,33.5,34.9,32.8,29.4,25.0],"temperature_2m_min":[15.5,12.5,13.2,15.3,26.8,25.8,23.3,19.7],"apparent_temperature_max":[19.8,21.4,24.9,29.0,30.3,32.0,28.0,25.2],"apparent_temperature_min":[15.4,11.3,10.4,13.2,19.1,22.9,23.6,18.5],"wind_speed_10m_max":[4.5,3.9,4.8,9.6,11.3,4.8,4.0,4.8],"precipitation_probability_max":[23,0,0,0,0,0,0,0]}},{"g":"ca","name":"Oceanside","st":"California","abbr":"CA","lat":33.196,"lon":-117.379,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[53,3,0,0,3,0,0,0],"temperature_2m_max":[20.8,21.6,25.7,31.7,34.0,32.0,29.7,24.9],"temperature_2m_min":[15.3,13.6,12.7,16.2,21.4,22.9,22.1,18.9],"apparent_temperature_max":[19.0,20.6,24.5,29.7,31.0,31.2,28.3,25.3],"apparent_temperature_min":[15.5,13.3,9.7,12.9,17.7,20.1,20.7,18.9],"wind_speed_10m_max":[6.2,4.3,5.3,3.7,6.0,5.0,4.9,4.7],"precipitation_probability_max":[38,2,0,0,0,1,0,0]}},{"g":"ca","name":"Ontario","st":"California","abbr":"CA","lat":34.063,"lon":-117.651,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,2,0,0,0,0,0,1],"temperature_2m_max":[17.7,23.3,28.5,30.9,31.6,32.1,30.1,27.3],"temperature_2m_min":[12.5,10.4,12.4,16.5,23.9,23.2,23.1,18.4],"apparent_temperature_max":[16.4,21.8,25.5,26.0,27.1,30.4,28.0,25.3],"apparent_temperature_min":[11.5,8.5,9.1,13.4,17.6,20.4,21.0,18.1],"wind_speed_10m_max":[4.2,3.6,2.9,7.5,9.3,4.5,4.4,5.9],"precipitation_probability_max":[36,0,0,0,0,0,0,0]}},{"g":"ca","name":"Orange","st":"California","abbr":"CA","lat":33.788,"lon":-117.853,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,2,0,0,0,0,0,0],"temperature_2m_max":[21.3,24.4,29.6,33.3,34.4,33.1,29.7,26.2],"temperature_2m_min":[15.4,12.9,13.8,17.7,26.4,25.2,23.3,19.3],"apparent_temperature_max":[21.0,24.3,27.3,29.9,29.2,31.6,27.8,25.6],"apparent_temperature_min":[14.7,11.6,10.7,13.8,19.4,22.1,23.1,18.1],"wind_speed_10m_max":[3.2,4.1,4.5,7.1,10.4,5.2,4.3,5.3],"precipitation_probability_max":[36,0,0,0,0,0,0,0]}},{"g":"ca","name":"Oxnard","st":"California","abbr":"CA","lat":34.197,"lon":-119.177,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,0,0,0,0,1,3],"temperature_2m_max":[21.7,22.7,27.1,34.0,33.7,31.9,26.3,21.4],"temperature_2m_min":[12.7,9.6,11.5,15.6,24.4,23.2,21.1,19.0],"apparent_temperature_max":[19.8,22.1,24.5,26.6,26.7,30.8,26.1,22.2],"apparent_temperature_min":[11.1,7.4,7.0,11.4,18.4,21.1,20.8,18.4],"wind_speed_10m_max":[5.0,3.6,6.6,11.4,13.5,6.5,3.3,5.3],"precipitation_probability_max":[11,0,0,0,0,0,0,0]}},{"g":"ca","name":"Palm Springs","st":"California","abbr":"CA","lat":33.83,"lon":-116.545,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,0,0,3,0,0,0],"temperature_2m_max":[24.2,25.1,29.8,29.7,30.3,28.6,28.8,30.1],"temperature_2m_min":[16.2,13.9,19.0,22.4,23.3,24.4,22.8,22.8],"apparent_temperature_max":[22.7,23.9,26.8,24.3,28.0,26.6,27.3,28.8],"apparent_temperature_min":[13.9,11.3,14.1,18.2,20.4,22.6,21.9,20.7],"wind_speed_10m_max":[6.3,5.8,4.6,9.0,5.6,3.0,3.3,4.0],"precipitation_probability_max":[27,0,0,0,2,3,1,1]}},{"g":"ca","name":"Palmdale","st":"California","abbr":"CA","lat":34.579,"lon":-118.116,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,0,0,0,0,0,2],"temperature_2m_max":[16.0,19.1,23.7,25.7,25.8,26.5,28.9,25.0],"temperature_2m_min":[9.8,8.8,7.3,12.5,17.4,16.3,18.2,14.5],"apparent_temperature_max":[12.1,15.3,19.6,18.1,17.8,22.2,25.4,19.6],"apparent_temperature_min":[6.4,4.9,2.9,9.0,11.5,13.5,15.4,12.6],"wind_speed_10m_max":[7.0,5.1,3.7,13.1,12.7,6.5,7.2,10.1],"precipitation_probability_max":[15,0,0,0,0,0,0,0]}},{"g":"ca","name":"Palo Alto","st":"California","abbr":"CA","lat":37.442,"lon":-122.143,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,3,0,0,0,0,1,3],"temperature_2m_max":[21.2,23.5,25.5,28.9,30.8,29.2,22.3,19.3],"temperature_2m_min":[7.8,9.3,8.9,11.0,19.3,18.0,13.9,13.0],"apparent_temperature_max":[20.5,19.5,23.5,25.6,27.6,27.0,20.4,16.6],"apparent_temperature_min":[5.9,7.2,5.6,9.6,16.7,17.5,12.9,10.7],"wind_speed_10m_max":[3.8,4.5,3.2,2.6,3.0,3.3,4.3,5.7],"precipitation_probability_max":[0,0,0,0,0,0,0,18]}},{"g":"ca","name":"Pasadena","st":"California","abbr":"CA","lat":34.148,"lon":-118.145,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,2,0,0,0,0,0,2],"temperature_2m_max":[20.0,23.4,28.6,31.6,33.0,31.1,29.2,26.2],"temperature_2m_min":[13.0,10.6,12.7,17.9,22.4,23.6,23.5,18.2],"apparent_temperature_max":[20.2,22.1,26.1,29.2,31.3,28.2,27.2,25.3],"apparent_temperature_min":[11.6,9.0,10.9,15.5,18.6,20.2,21.3,17.5],"wind_speed_10m_max":[3.4,4.4,3.9,4.5,3.8,3.9,3.6,3.8],"precipitation_probability_max":[33,0,0,0,0,0,0,0]}},{"g":"ca","name":"Rancho Cucamonga","st":"California","abbr":"CA","lat":34.106,"lon":-117.593,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,1,0,0,0,0,0,1],"temperature_2m_max":[17.7,23.0,28.1,30.2,31.6,32.1,30.1,27.7],"temperature_2m_min":[11.5,10.2,13.1,16.2,23.9,22.6,22.7,18.9],"apparent_temperature_max":[16.1,21.3,25.0,23.7,25.9,30.7,28.1,25.5],"apparent_temperature_min":[11.3,7.9,9.1,13.9,16.1,19.7,20.5,18.4],"wind_speed_10m_max":[5.1,2.7,3.2,10.3,11.8,3.6,4.5,5.8],"precipitation_probability_max":[38,0,0,0,0,0,0,0]}},{"g":"ca","name":"Redding","st":"California","abbr":"CA","lat":40.587,"lon":-122.392,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,3,3,0,3,3,3,3],"temperature_2m_max":[22.3,26.0,31.2,35.4,34.1,31.1,27.9,22.6],"temperature_2m_min":[11.1,9.6,14.9,14.1,13.4,13.2,11.3,7.6],"apparent_temperature_max":[17.5,21.3,27.4,31.3,31.7,28.1,24.1,18.9],"apparent_temperature_min":[5.0,5.2,10.5,10.6,10.0,9.8,8.7,5.0],"wind_speed_10m_max":[7.2,6.5,5.1,4.5,3.0,2.3,3.5,5.2],"precipitation_probability_max":[0,0,1,0,0,0,0,23]}},{"g":"ca","name":"Riverside","st":"California","abbr":"CA","lat":33.953,"lon":-117.396,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,1,0,0,0,0,0,0],"temperature_2m_max":[17.6,23.6,29.1,31.2,32.4,31.7,30.8,29.4],"temperature_2m_min":[14.1,11.4,11.1,17.5,22.0,22.7,22.5,19.3],"apparent_temperature_max":[17.3,21.8,25.5,25.7,29.2,29.1,29.0,27.0],"apparent_temperature_min":[13.6,10.9,8.0,12.8,19.2,20.4,20.4,19.9],"wind_speed_10m_max":[3.5,5.5,4.4,10.4,6.3,5.8,4.4,5.5],"precipitation_probability_max":[35,0,0,0,0,0,0,0]}},{"g":"ca","name":"San Bernardino","st":"California","abbr":"CA","lat":34.108,"lon":-117.29,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,3,0,0,0,0,0,1],"temperature_2m_max":[16.9,23.4,28.3,29.7,32.3,31.5,30.0,27.7],"temperature_2m_min":[13.0,10.5,11.2,14.3,21.0,21.0,22.1,18.8],"apparent_temperature_max":[17.0,22.4,25.5,23.8,28.1,29.1,27.6,25.3],"apparent_temperature_min":[13.4,9.3,7.7,11.1,16.4,17.7,19.8,19.0],"wind_speed_10m_max":[4.4,5.8,3.9,9.4,9.1,4.7,3.5,5.8],"precipitation_probability_max":[49,0,0,0,0,0,0,0]}},{"g":"ca","name":"San Clemente","st":"California","abbr":"CA","lat":33.427,"lon":-117.612,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,3,0,0,1,0,0,2],"temperature_2m_max":[19.5,21.0,25.6,31.2,32.4,30.2,27.2,23.7],"temperature_2m_min":[14.5,13.2,14.5,18.7,22.8,23.5,21.1,18.4],"apparent_temperature_max":[19.0,20.6,24.0,29.1,27.5,30.9,26.1,24.2],"apparent_temperature_min":[14.0,11.9,12.0,15.3,17.8,20.4,20.9,18.6],"wind_speed_10m_max":[4.0,4.2,4.2,5.6,10.2,5.5,4.3,3.9],"precipitation_probability_max":[37,1,0,0,0,0,0,0]}},{"g":"ca","name":"Santa Ana","st":"California","abbr":"CA","lat":33.746,"lon":-117.868,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[53,3,0,0,0,0,0,0],"temperature_2m_max":[21.7,23.8,29.3,33.4,34.5,33.3,29.8,26.3],"temperature_2m_min":[15.6,12.9,13.1,17.1,26.6,25.4,23.5,19.5],"apparent_temperature_max":[20.3,24.2,27.3,30.1,29.4,31.8,28.0,25.8],"apparent_temperature_min":[15.5,11.9,10.4,13.4,19.6,22.2,23.2,18.3],"wind_speed_10m_max":[3.8,4.1,4.8,7.1,10.4,5.2,4.3,5.3],"precipitation_probability_max":[32,0,0,0,0,0,0,0]}},{"g":"ca","name":"Santa Barbara","st":"California","abbr":"CA","lat":34.421,"lon":-119.698,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[63,0,0,3,0,0,2,3],"temperature_2m_max":[21.0,21.6,25.8,28.0,29.7,29.3,27.3,23.3],"temperature_2m_min":[13.3,11.2,14.6,15.4,22.0,21.6,20.0,16.7],"apparent_temperature_max":[19.5,21.4,25.5,25.3,28.2,28.1,26.9,23.0],"apparent_temperature_min":[12.5,9.6,12.2,15.6,18.6,19.8,19.3,16.1],"wind_speed_10m_max":[4.5,3.2,3.7,4.2,4.0,3.5,2.1,3.1],"precipitation_probability_max":[16,0,0,0,0,0,0,0]}},{"g":"ca","name":"Santa Clarita","st":"California","abbr":"CA","lat":34.392,"lon":-118.543,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,0,0,0,0,0,3],"temperature_2m_max":[19.4,24.1,28.7,30.6,30.4,31.5,30.8,27.1],"temperature_2m_min":[11.6,7.6,10.7,15.9,20.0,18.1,16.5,13.7],"apparent_temperature_max":[16.7,21.2,24.0,22.0,21.8,26.5,27.6,23.9],"apparent_temperature_min":[9.5,6.0,6.2,11.0,14.5,14.2,14.4,13.1],"wind_speed_10m_max":[6.0,5.7,5.5,13.3,13.9,8.2,5.2,6.6],"precipitation_probability_max":[16,0,0,0,0,0,0,0]}},{"g":"ca","name":"Santa Cruz","st":"California","abbr":"CA","lat":36.974,"lon":-122.031,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,45,1,0,0,0,0,3],"temperature_2m_max":[20.2,24.9,25.3,27.1,27.6,26.7,21.8,19.9],"temperature_2m_min":[9.9,9.9,11.5,12.7,19.5,17.8,14.7,13.0],"apparent_temperature_max":[19.5,22.4,22.3,25.1,25.9,25.0,20.4,18.2],"apparent_temperature_min":[7.5,7.4,8.4,10.9,16.3,17.7,14.3,10.6],"wind_speed_10m_max":[5.0,5.0,4.7,3.8,3.3,3.3,4.0,7.2],"precipitation_probability_max":[1,0,0,0,0,0,0,18]}},{"g":"ca","name":"Santa Monica","st":"California","abbr":"CA","lat":34.019,"lon":-118.491,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[51,3,0,0,0,0,0,2],"temperature_2m_max":[20.0,21.5,25.4,30.1,33.0,31.6,28.0,24.7],"temperature_2m_min":[14.5,11.7,12.5,17.2,25.2,24.1,22.2,19.5],"apparent_temperature_max":[21.2,21.0,23.4,28.5,32.5,30.2,27.3,24.8],"apparent_temperature_min":[13.3,9.6,8.5,13.9,20.9,20.9,23.0,19.4],"wind_speed_10m_max":[5.1,4.6,3.8,3.3,8.7,4.7,4.0,4.0],"precipitation_probability_max":[22,0,0,0,0,0,0,0]}},{"g":"ca","name":"South Lake Tahoe","st":"California","abbr":"CA","lat":38.933,"lon":-119.984,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,2,0,0,3,3,51],"temperature_2m_max":[8.9,10.9,16.6,17.6,19.0,21.7,20.9,13.5],"temperature_2m_min":[-0.1,-1.8,1.7,3.9,3.9,6.6,6.1,-0.0],"apparent_temperature_max":[4.9,5.3,12.4,12.7,15.6,17.7,16.1,5.5],"apparent_temperature_min":[-3.9,-6.3,-3.2,0.5,1.0,2.3,1.2,-2.9],"wind_speed_10m_max":[5.5,6.5,3.6,6.0,2.4,6.5,7.1,9.4],"precipitation_probability_max":[13,7,0,0,0,0,0,20]}},{"g":"ca","name":"Stockton","st":"California","abbr":"CA","lat":37.958,"lon":-121.291,"tz":"America/Los_Angeles","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,3,0,0,0,2,3],"temperature_2m_max":[22.6,24.6,27.8,30.5,31.1,32.6,28.6,21.8],"temperature_2m_min":[10.7,8.0,7.2,13.1,17.1,18.5,14.3,13.1],"apparent_temperature_max":[19.4,19.5,24.3,27.7,28.4,29.3,26.1,18.3],"apparent_temperature_min":[9.2,5.2,4.6,9.7,14.3,15.7,12.9,10.7],"wind_speed_10m_max":[3.6,5.1,2.9,2.4,1.5,2.6,5.3,4.8],"precipitation_probability_max":[0,0,0,0,0,0,0,14]}},{"g":"fl","name":"Boca Raton","st":"Florida","abbr":"FL","lat":26.359,"lon":-80.083,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,1,0,51,95,95,95,96],"temperature_2m_max":[31.0,29.9,30.0,30.8,30.4,29.9,27.3,27.8],"temperature_2m_min":[24.7,22.3,22.9,26.1,27.9,26.0,26.5,26.3],"apparent_temperature_max":[36.6,33.8,33.2,34.4,34.5,32.7,28.2,29.6],"apparent_temperature_min":[27.5,25.1,24.3,28.7,31.1,27.5,27.3,28.0],"wind_speed_10m_max":[5.7,5.0,5.1,5.6,5.1,8.3,9.2,8.9],"precipitation_probability_max":[6,3,27,40,61,75,86,82]}},{"g":"fl","name":"Boynton Beach","st":"Florida","abbr":"FL","lat":26.525,"lon":-80.066,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,1,0,53,95,95,95,96],"temperature_2m_max":[31.0,29.9,29.9,30.9,30.6,29.9,27.0,27.8],"temperature_2m_min":[24.2,21.9,23.2,25.5,27.5,25.5,26.2,26.5],"apparent_temperature_max":[34.9,33.4,33.5,34.7,34.5,32.3,28.2,29.8],"apparent_temperature_min":[25.9,24.4,24.6,27.6,31.2,27.2,26.9,27.9],"wind_speed_10m_max":[6.0,4.6,5.1,5.4,4.8,8.1,9.0,8.7],"precipitation_probability_max":[4,2,17,34,63,69,82,80]}},{"g":"fl","name":"Cape Coral","st":"Florida","abbr":"FL","lat":26.563,"lon":-81.95,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,1,53,95,95,51,53],"temperature_2m_max":[31.3,30.9,31.6,34.1,33.4,30.1,28.9,29.2],"temperature_2m_min":[23.3,20.5,22.2,22.8,25.3,24.5,24.0,23.7],"apparent_temperature_max":[34.7,34.1,35.2,37.2,38.1,32.7,29.6,30.9],"apparent_temperature_min":[25.8,23.4,25.4,26.0,28.9,26.2,25.3,26.3],"wind_speed_10m_max":[5.5,3.5,4.4,6.4,5.4,6.4,8.3,6.5],"precipitation_probability_max":[5,0,2,86,65,55,43,48]}},{"g":"fl","name":"Clearwater","st":"Florida","abbr":"FL","lat":27.966,"lon":-82.8,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,3,3,0,53,51,51,51],"temperature_2m_max":[30.9,28.4,29.3,30.1,29.9,28.2,27.0,29.9],"temperature_2m_min":[20.7,19.1,22.0,22.3,25.9,24.7,23.5,24.4],"apparent_temperature_max":[31.3,33.5,33.3,34.8,35.0,30.9,25.7,30.8],"apparent_temperature_min":[22.7,20.8,25.4,25.5,28.9,23.1,23.0,24.4],"wind_speed_10m_max":[5.3,2.7,3.3,4.6,5.2,10.6,10.9,9.2],"precipitation_probability_max":[0,1,3,20,22,10,15,25]}},{"g":"fl","name":"Coral Springs","st":"Florida","abbr":"FL","lat":26.271,"lon":-80.271,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,2,3,3,95,95,95,95],"temperature_2m_max":[30.7,30.0,29.9,33.4,33.3,31.0,28.3,26.4],"temperature_2m_min":[24.9,23.4,21.5,23.6,27.7,25.7,25.9,24.3],"apparent_temperature_max":[38.2,36.2,33.2,36.1,36.3,32.8,29.8,29.1],"apparent_temperature_min":[29.7,27.0,24.4,27.7,31.3,27.4,27.8,28.4],"wind_speed_10m_max":[4.1,3.8,4.0,5.7,5.0,6.0,6.9,6.3],"precipitation_probability_max":[4,0,8,32,72,75,83,76]}},{"g":"fl","name":"Daytona Beach","st":"Florida","abbr":"FL","lat":29.211,"lon":-81.023,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,0,3,0,95,51,53,95],"temperature_2m_max":[28.5,27.3,27.3,29.9,31.9,26.6,24.6,26.5],"temperature_2m_min":[19.7,19.9,23.7,23.2,24.0,24.1,23.7,23.8],"apparent_temperature_max":[30.7,33.3,31.3,32.4,36.6,29.6,24.6,28.4],"apparent_temperature_min":[21.0,22.2,25.7,24.8,28.7,22.9,22.4,24.9],"wind_speed_10m_max":[4.5,4.3,5.8,4.4,2.7,8.8,8.6,6.4],"precipitation_probability_max":[0,3,13,13,52,47,42,44]}},{"g":"fl","name":"Delray Beach","st":"Florida","abbr":"FL","lat":26.461,"lon":-80.073,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[2,1,0,51,95,95,95,96],"temperature_2m_max":[30.7,29.9,29.9,30.8,30.4,29.9,27.3,27.8],"temperature_2m_min":[24.3,22.1,22.9,25.6,27.9,26.0,26.5,26.3],"apparent_temperature_max":[36.3,33.7,33.3,34.4,34.5,32.7,28.2,29.6],"apparent_temperature_min":[25.9,24.6,24.1,28.0,31.1,27.6,27.3,28.0],"wind_speed_10m_max":[5.8,4.8,5.2,5.9,5.1,8.3,9.2,8.9],"precipitation_probability_max":[6,4,21,37,62,71,83,81]}},{"g":"fl","name":"Fort Lauderdale","st":"Florida","abbr":"FL","lat":26.122,"lon":-80.143,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,2,1,53,95,95,95,95],"temperature_2m_max":[31.3,30.2,30.3,30.3,30.4,29.8,28.2,27.7],"temperature_2m_min":[24.8,22.9,21.7,24.6,28.2,26.9,27.0,26.3],"apparent_temperature_max":[38.5,34.5,33.9,34.4,34.6,32.9,29.1,29.6],"apparent_temperature_min":[29.7,26.0,24.3,28.9,30.9,27.9,27.9,28.6],"wind_speed_10m_max":[5.1,4.3,4.2,6.3,6.0,8.0,9.2,8.8],"precipitation_probability_max":[7,4,31,31,59,76,90,82]}},{"g":"fl","name":"Fort Myers","st":"Florida","abbr":"FL","lat":26.622,"lon":-81.841,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,1,55,95,95,55,51],"temperature_2m_max":[30.8,30.4,31.1,33.6,32.5,30.0,28.0,28.7],"temperature_2m_min":[23.0,20.0,21.2,22.0,24.1,23.9,23.3,22.8],"apparent_temperature_max":[33.8,33.9,34.7,36.4,36.8,32.6,29.1,29.9],"apparent_temperature_min":[25.9,22.6,24.3,25.1,28.1,25.8,25.1,25.7],"wind_speed_10m_max":[4.7,3.3,4.4,6.1,3.8,6.4,8.5,6.9],"precipitation_probability_max":[5,0,2,88,75,54,46,47]}},{"g":"fl","name":"Gainesville","st":"Florida","abbr":"FL","lat":29.652,"lon":-82.325,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,2,0,0,51,3,3,3],"temperature_2m_max":[29.8,28.5,28.3,32.7,32.6,27.2,25.0,28.9],"temperature_2m_min":[18.0,16.4,18.7,20.1,21.9,20.4,20.2,21.9],"apparent_temperature_max":[29.0,32.5,32.9,34.5,35.8,26.5,24.2,29.1],"apparent_temperature_min":[18.4,17.1,20.4,22.4,24.8,19.2,19.7,22.4],"wind_speed_10m_max":[4.5,2.3,2.4,2.5,3.4,6.4,6.1,5.3],"precipitation_probability_max":[0,0,1,2,17,3,7,11]}},{"g":"fl","name":"Hialeah","st":"Florida","abbr":"FL","lat":25.858,"lon":-80.278,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,2,3,63,95,95,96,96],"temperature_2m_max":[32.3,31.0,30.8,32.2,32.2,31.5,29.2,28.9],"temperature_2m_min":[26.0,23.9,22.4,23.9,27.9,27.9,26.9,26.2],"apparent_temperature_max":[39.6,35.5,35.1,35.3,35.9,33.8,30.2,30.4],"apparent_temperature_min":[31.6,27.2,25.3,27.6,30.9,28.8,28.4,28.4],"wind_speed_10m_max":[4.8,4.7,5.0,5.8,5.3,7.1,7.6,7.1],"precipitation_probability_max":[15,5,23,30,52,75,88,78]}},{"g":"fl","name":"Hollywood","st":"Florida","abbr":"FL","lat":26.011,"lon":-80.149,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[2,2,2,53,95,95,95,95],"temperature_2m_max":[30.6,29.7,29.9,30.3,30.4,29.8,28.2,27.7],"temperature_2m_min":[24.3,23.1,23.3,25.0,28.2,26.9,27.0,26.4],"apparent_temperature_max":[38.1,34.5,33.9,34.4,34.6,32.9,29.1,29.6],"apparent_temperature_min":[28.7,25.9,25.5,27.9,30.9,27.9,27.9,28.6],"wind_speed_10m_max":[5.3,5.0,4.7,6.3,6.0,8.0,9.2,8.8],"precipitation_probability_max":[9,5,38,38,52,75,90,81]}},{"g":"fl","name":"Jupiter","st":"Florida","abbr":"FL","lat":26.934,"lon":-80.094,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[2,1,2,80,95,95,95,95],"temperature_2m_max":[29.5,29.8,29.7,30.2,30.7,30.1,26.7,28.0],"temperature_2m_min":[24.1,21.4,23.8,25.1,26.9,24.6,25.9,25.9],"apparent_temperature_max":[33.2,34.2,33.8,34.1,34.9,31.7,27.4,31.0],"apparent_temperature_min":[26.0,23.6,25.2,26.8,31.1,26.2,26.1,27.3],"wind_speed_10m_max":[4.9,4.1,6.4,4.9,4.7,8.4,9.4,8.1],"precipitation_probability_max":[9,3,12,44,67,73,78,78]}},{"g":"fl","name":"Key West","st":"Florida","abbr":"FL","lat":24.555,"lon":-81.782,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[2,55,82,95,95,95,96,95],"temperature_2m_max":[31.3,30.7,27.9,29.1,29.1,28.9,28.9,28.9],"temperature_2m_min":[26.7,25.9,24.0,24.8,28.3,27.8,27.8,27.9],"apparent_temperature_max":[37.6,34.6,32.5,33.0,33.9,32.4,30.2,30.8],"apparent_temperature_min":[31.0,29.9,24.7,27.1,30.6,29.1,29.6,28.8],"wind_speed_10m_max":[5.8,6.7,8.5,8.3,8.1,9.5,9.9,9.9],"precipitation_probability_max":[10,55,34,42,50,67,77,76]}},{"g":"fl","name":"Kissimmee","st":"Florida","abbr":"FL","lat":28.305,"lon":-81.417,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,3,2,55,95,80,82,53],"temperature_2m_max":[30.4,29.5,29.1,30.0,31.5,26.9,23.6,27.2],"temperature_2m_min":[19.7,19.7,21.7,21.7,23.2,22.4,22.1,22.5],"apparent_temperature_max":[30.8,34.6,33.7,33.7,36.4,29.2,25.0,28.6],"apparent_temperature_min":[22.2,22.2,25.1,24.4,27.1,23.5,23.2,24.5],"wind_speed_10m_max":[4.0,3.3,3.1,4.0,2.8,7.2,6.5,7.1],"precipitation_probability_max":[0,8,6,38,75,24,28,27]}},{"g":"fl","name":"Lakeland","st":"Florida","abbr":"FL","lat":28.039,"lon":-81.95,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[2,55,3,53,55,80,51,53],"temperature_2m_max":[28.9,28.3,29.0,29.8,32.6,28.3,25.2,27.8],"temperature_2m_min":[19.7,19.6,21.4,21.1,23.0,22.6,22.0,22.5],"apparent_temperature_max":[31.1,32.6,32.9,33.4,38.2,29.4,24.9,29.3],"apparent_temperature_min":[21.9,22.3,24.9,23.9,26.8,22.5,23.1,23.8],"wind_speed_10m_max":[4.2,2.8,3.2,3.8,3.5,7.5,8.9,7.3],"precipitation_probability_max":[0,10,2,46,71,19,24,28]}},{"g":"fl","name":"Melbourne","st":"Florida","abbr":"FL","lat":28.084,"lon":-80.608,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,61,51,95,95,95,95],"temperature_2m_max":[28.6,27.4,27.9,29.7,31.3,29.2,24.9,27.1],"temperature_2m_min":[21.3,21.1,23.6,23.9,24.7,22.8,22.9,23.9],"apparent_temperature_max":[33.4,32.5,32.9,33.5,36.9,31.4,25.7,29.7],"apparent_temperature_min":[23.0,23.6,26.2,26.4,28.9,24.7,24.1,25.3],"wind_speed_10m_max":[4.6,4.0,4.2,4.3,3.0,6.4,7.8,7.0],"precipitation_probability_max":[6,2,11,20,75,62,59,50]}},{"g":"fl","name":"Miramar","st":"Florida","abbr":"FL","lat":25.987,"lon":-80.232,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,1,3,51,95,95,96,95],"temperature_2m_max":[31.5,30.6,30.2,32.3,32.5,31.5,28.8,28.7],"temperature_2m_min":[25.8,23.8,22.2,24.0,28.0,27.4,26.9,26.0],"apparent_temperature_max":[39.1,35.4,34.1,35.3,35.9,33.9,29.8,30.3],"apparent_temperature_min":[31.4,27.3,25.0,28.7,31.1,28.2,28.6,28.4],"wind_speed_10m_max":[4.2,4.6,4.3,5.7,5.4,7.2,7.5,6.9],"precipitation_probability_max":[13,4,26,26,57,75,89,79]}},{"g":"fl","name":"Naples","st":"Florida","abbr":"FL","lat":26.142,"lon":-81.796,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,95,95,95,80,80],"temperature_2m_max":[30.6,30.2,31.0,33.7,33.0,28.1,27.2,28.8],"temperature_2m_min":[23.5,20.6,21.9,22.3,24.6,23.6,22.7,23.3],"apparent_temperature_max":[33.9,33.8,34.4,38.5,37.3,30.6,29.1,29.9],"apparent_temperature_min":[26.7,23.0,24.9,25.1,28.6,25.6,24.9,26.5],"wind_speed_10m_max":[4.3,3.5,4.4,4.3,4.0,5.9,6.0,6.8],"precipitation_probability_max":[3,0,7,83,68,59,57,56]}},{"g":"fl","name":"Ocala","st":"Florida","abbr":"FL","lat":29.187,"lon":-82.14,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,2,3,0,51,3,3,53],"temperature_2m_max":[30.5,28.3,28.6,30.9,31.4,26.7,23.8,27.1],"temperature_2m_min":[18.3,17.3,19.5,19.8,22.3,21.3,21.2,22.1],"apparent_temperature_max":[30.6,33.1,33.1,35.2,36.1,26.3,23.3,28.2],"apparent_temperature_min":[20.2,19.4,22.2,22.1,25.7,20.2,20.6,23.0],"wind_speed_10m_max":[4.5,2.4,2.6,3.3,3.7,8.2,7.1,6.9],"precipitation_probability_max":[0,1,3,4,33,10,19,17]}},{"g":"fl","name":"Palm Bay","st":"Florida","abbr":"FL","lat":28.034,"lon":-80.589,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,3,82,51,95,95,95,80],"temperature_2m_max":[28.7,27.5,28.0,29.4,30.8,28.7,26.3,27.3],"temperature_2m_min":[21.3,21.0,24.0,24.3,24.9,23.2,23.4,24.4],"apparent_temperature_max":[33.6,32.9,33.1,32.9,36.3,31.0,26.5,29.4],"apparent_temperature_min":[23.1,23.2,25.8,26.1,29.1,24.2,23.9,25.1],"wind_speed_10m_max":[4.8,4.1,4.8,5.0,4.1,7.8,9.3,8.0],"precipitation_probability_max":[8,4,12,22,75,61,61,51]}},{"g":"fl","name":"Pembroke Pines","st":"Florida","abbr":"FL","lat":26.003,"lon":-80.224,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,1,3,53,95,95,96,95],"temperature_2m_max":[31.3,30.3,30.0,32.3,32.5,31.5,28.8,28.7],"temperature_2m_min":[25.4,23.4,22.0,23.9,28.0,27.3,26.9,26.0],"apparent_temperature_max":[38.7,35.2,34.2,35.3,35.8,33.9,29.8,30.2],"apparent_temperature_min":[30.3,26.8,24.8,28.5,31.1,28.2,28.5,28.4],"wind_speed_10m_max":[4.7,4.5,4.4,5.7,5.4,7.2,7.5,6.9],"precipitation_probability_max":[13,4,26,26,57,75,89,79]}},{"g":"fl","name":"Pensacola","st":"Florida","abbr":"FL","lat":30.421,"lon":-87.217,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[2,0,0,0,3,3,3,3],"temperature_2m_max":[33.0,29.9,29.0,30.7,32.4,25.1,25.0,27.6],"temperature_2m_min":[17.2,15.7,17.1,20.5,22.3,15.5,17.0,20.9],"apparent_temperature_max":[35.8,33.2,32.3,32.2,35.5,22.3,23.8,28.6],"apparent_temperature_min":[18.3,15.6,17.9,22.3,22.7,10.6,15.1,21.0],"wind_speed_10m_max":[3.0,2.5,2.8,3.6,6.0,6.7,5.8,6.2],"precipitation_probability_max":[0,0,0,0,1,1,0,4]}},{"g":"fl","name":"Pompano Beach","st":"Florida","abbr":"FL","lat":26.238,"lon":-80.125,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,2,0,53,95,95,95,95],"temperature_2m_max":[30.1,29.6,29.8,31.1,31.1,30.2,28.0,27.3],"temperature_2m_min":[24.7,22.3,21.5,24.2,28.1,26.7,26.7,25.7],"apparent_temperature_max":[37.4,34.6,33.1,34.8,35.0,32.9,29.1,29.3],"apparent_temperature_min":[27.5,25.3,23.4,28.2,31.2,27.9,27.9,28.3],"wind_speed_10m_max":[5.5,4.5,4.4,5.9,5.5,7.4,8.4,8.2],"precipitation_probability_max":[4,4,27,36,62,76,88,81]}},{"g":"fl","name":"Port St. Lucie","st":"Florida","abbr":"FL","lat":27.294,"lon":-80.35,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,0,53,53,95,95,95,95],"temperature_2m_max":[29.3,28.5,28.8,30.1,30.7,29.0,26.2,28.7],"temperature_2m_min":[23.0,21.4,22.3,22.2,25.2,23.8,24.4,24.4],"apparent_temperature_max":[32.8,33.0,33.2,33.9,35.8,31.5,27.7,31.5],"apparent_temperature_min":[26.9,24.3,25.7,25.4,29.3,25.2,25.5,26.3],"wind_speed_10m_max":[4.4,3.5,4.5,5.7,3.4,7.2,8.3,6.9],"precipitation_probability_max":[9,5,28,51,77,58,67,68]}},{"g":"fl","name":"Sarasota","st":"Florida","abbr":"FL","lat":27.336,"lon":-82.531,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,51,95,80,53,51],"temperature_2m_max":[29.5,28.1,28.7,32.6,32.7,29.4,29.1,28.5],"temperature_2m_min":[20.2,19.9,21.7,21.8,24.2,23.5,22.5,22.7],"apparent_temperature_max":[32.8,32.9,33.1,36.7,37.5,30.4,30.2,29.6],"apparent_temperature_min":[23.2,22.6,25.2,24.5,27.6,24.7,24.0,24.5],"wind_speed_10m_max":[4.7,2.5,3.4,4.7,4.5,6.8,8.7,7.0],"precipitation_probability_max":[1,2,0,65,54,36,25,39]}},{"g":"fl","name":"St. Petersburg","st":"Florida","abbr":"FL","lat":27.771,"lon":-82.679,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,51,2,1,51,51,3,51],"temperature_2m_max":[28.9,27.7,28.5,31.5,31.9,28.4,27.2,30.4],"temperature_2m_min":[19.8,20.0,22.5,22.6,25.3,24.6,23.0,24.0],"apparent_temperature_max":[32.2,32.5,32.4,35.2,35.7,30.8,26.1,31.1],"apparent_temperature_min":[21.7,22.4,25.9,25.8,28.4,23.0,23.1,24.2],"wind_speed_10m_max":[4.3,2.7,3.5,5.2,5.4,9.9,10.8,8.9],"precipitation_probability_max":[0,2,3,25,31,15,16,31]}},{"g":"fl","name":"West Palm Beach","st":"Florida","abbr":"FL","lat":26.715,"lon":-80.053,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[2,1,0,80,95,95,95,96],"temperature_2m_max":[30.6,29.9,29.9,30.2,31.0,30.1,26.7,28.3],"temperature_2m_min":[23.9,21.8,23.3,25.5,27.2,24.9,25.9,26.1],"apparent_temperature_max":[34.2,33.5,33.6,34.4,35.1,31.7,27.9,31.4],"apparent_temperature_min":[26.4,23.7,25.2,27.4,31.1,26.7,26.4,27.6],"wind_speed_10m_max":[5.5,4.7,4.6,4.9,4.4,7.8,8.6,7.8],"precipitation_probability_max":[6,1,14,43,67,68,80,79]}},{"g":"ny","name":"Binghamton","st":"New York","abbr":"NY","lat":42.099,"lon":-75.918,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,3,3,81,51,0,3],"temperature_2m_max":[17.5,23.3,17.7,16.7,19.4,6.0,14.0,17.7],"temperature_2m_min":[10.8,12.1,11.4,7.5,5.1,0.1,-1.0,3.6],"apparent_temperature_max":[18.2,23.6,18.9,14.8,17.9,-0.4,9.3,14.3],"apparent_temperature_min":[10.6,10.6,9.7,5.7,1.7,-5.2,-4.7,0.8],"wind_speed_10m_max":[3.5,5.1,4.6,5.1,7.8,8.0,5.0,4.6],"precipitation_probability_max":[19,13,12,46,92,47,2,1]}},{"g":"ny","name":"Hempstead","st":"New York","abbr":"NY","lat":40.706,"lon":-73.619,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,3,3,80,3,0,3],"temperature_2m_max":[22.0,20.7,26.4,19.6,23.0,13.6,15.4,19.1],"temperature_2m_min":[12.3,13.0,14.8,11.5,13.6,7.3,6.6,11.3],"apparent_temperature_max":[21.3,21.6,26.5,17.6,22.8,8.4,10.0,15.7],"apparent_temperature_min":[10.4,13.0,14.7,9.8,9.7,0.8,1.9,7.9],"wind_speed_10m_max":[5.3,4.3,5.3,6.1,8.4,10.2,5.7,5.6],"precipitation_probability_max":[37,3,10,15,86,20,1,0]}},{"g":"ny","name":"Ithaca","st":"New York","abbr":"NY","lat":42.441,"lon":-76.497,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,3,51,81,53,0,3],"temperature_2m_max":[18.3,25.8,20.6,16.7,20.7,7.3,16.1,19.1],"temperature_2m_min":[11.3,13.0,11.5,8.0,5.5,1.1,0.3,4.7],"apparent_temperature_max":[19.7,26.6,22.0,15.0,19.6,0.4,11.5,15.2],"apparent_temperature_min":[10.6,11.9,10.1,6.3,0.8,-5.7,-3.7,1.2],"wind_speed_10m_max":[2.2,4.9,4.8,6.3,9.1,9.8,5.8,6.0],"precipitation_probability_max":[12,24,14,48,93,73,3,4]}},{"g":"ny","name":"Lake Placid","st":"New York","abbr":"NY","lat":44.28,"lon":-73.982,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[61,65,61,55,65,85,3,3],"temperature_2m_max":[13.4,17.2,15.9,11.5,14.0,1.3,7.1,13.4],"temperature_2m_min":[10.2,9.4,5.8,3.6,1.3,-4.7,-6.2,3.2],"apparent_temperature_max":[12.4,16.2,15.9,8.6,12.8,-5.3,2.8,10.5],"apparent_temperature_min":[9.0,8.2,3.3,0.6,-4.0,-11.6,-10.2,-0.5],"wind_speed_10m_max":[2.9,5.7,5.5,3.4,9.0,8.9,5.8,4.9],"precipitation_probability_max":[80,98,48,36,95,89,15,1]}},{"g":"ny","name":"Montauk","st":"New York","abbr":"NY","lat":41.036,"lon":-71.955,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,3,3,81,51,1,3],"temperature_2m_max":[20.2,18.1,22.4,15.5,18.8,14.9,14.3,16.6],"temperature_2m_min":[12.6,15.1,14.6,12.4,14.4,7.0,7.1,13.9],"apparent_temperature_max":[20.2,17.8,22.0,13.3,16.4,7.0,8.2,12.1],"apparent_temperature_min":[10.1,13.8,11.4,8.1,9.1,-2.5,-0.8,8.3],"wind_speed_10m_max":[6.0,7.3,8.1,9.1,15.7,17.7,10.5,11.1],"precipitation_probability_max":[61,5,11,5,94,55,2,0]}},{"g":"ny","name":"Mount Vernon","st":"New York","abbr":"NY","lat":40.913,"lon":-73.837,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,3,3,81,3,0,3],"temperature_2m_max":[22.3,20.5,25.0,19.2,24.6,13.1,15.6,19.6],"temperature_2m_min":[11.8,12.9,13.8,11.2,13.0,6.2,5.4,9.5],"apparent_temperature_max":[21.2,21.0,25.3,17.0,24.5,7.7,10.3,15.6],"apparent_temperature_min":[10.1,12.1,13.2,9.1,8.4,0.2,1.1,6.5],"wind_speed_10m_max":[5.0,4.3,4.8,5.6,8.7,9.4,5.5,5.6],"precipitation_probability_max":[35,3,10,16,86,16,1,0]}},{"g":"ny","name":"New Rochelle","st":"New York","abbr":"NY","lat":40.911,"lon":-73.782,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,3,3,81,3,0,3],"temperature_2m_max":[22.0,20.5,25.0,19.2,24.6,13.1,15.7,19.6],"temperature_2m_min":[11.9,12.5,13.9,11.1,13.0,6.2,5.5,9.5],"apparent_temperature_max":[21.5,21.0,25.5,17.1,24.5,7.8,10.3,15.7],"apparent_temperature_min":[10.4,11.6,13.6,9.1,8.5,0.3,1.2,6.5],"wind_speed_10m_max":[4.6,4.5,5.0,5.6,8.7,9.4,5.5,5.6],"precipitation_probability_max":[35,3,10,16,87,17,1,0]}},{"g":"ny","name":"Niagara Falls","st":"New York","abbr":"NY","lat":43.094,"lon":-79.057,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,63,3,51,82,85,1,3],"temperature_2m_max":[20.9,24.8,17.8,16.1,19.3,8.6,13.9,16.0],"temperature_2m_min":[12.0,17.8,11.6,9.7,5.5,1.5,3.3,12.2],"apparent_temperature_max":[19.7,24.2,17.4,12.3,17.8,3.2,8.5,12.1],"apparent_temperature_min":[11.3,17.7,9.7,6.3,-0.0,-4.7,-0.5,7.6],"wind_speed_10m_max":[6.0,8.0,5.0,6.0,9.9,8.7,8.6,8.1],"precipitation_probability_max":[8,52,11,58,87,41,0,2]}},{"g":"ny","name":"Poughkeepsie","st":"New York","abbr":"NY","lat":41.7,"lon":-73.921,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,3,3,82,3,1,3],"temperature_2m_max":[20.5,20.7,23.0,16.5,21.5,11.2,15.2,17.7],"temperature_2m_min":[10.8,11.4,12.2,8.5,9.9,1.1,-0.2,3.7],"apparent_temperature_max":[20.6,20.0,24.0,14.2,21.0,6.3,10.8,13.8],"apparent_temperature_min":[9.2,10.8,11.7,6.7,6.7,-2.3,-3.8,0.6],"wind_speed_10m_max":[4.3,5.3,5.1,4.7,6.4,7.6,4.6,5.1],"precipitation_probability_max":[38,4,17,12,87,10,0,0]}},{"g":"ny","name":"Rochester","st":"New York","abbr":"NY","lat":43.155,"lon":-77.616,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,51,3,3,61,51,1,3],"temperature_2m_max":[20.2,26.4,18.9,13.4,22.1,8.2,16.2,21.0],"temperature_2m_min":[11.3,14.1,11.0,9.7,6.6,2.1,2.8,8.8],"apparent_temperature_max":[20.1,26.0,19.0,9.9,20.4,1.2,10.8,15.9],"apparent_temperature_min":[10.6,13.7,9.7,6.6,0.2,-5.4,-1.8,4.7],"wind_speed_10m_max":[3.7,6.6,4.7,4.6,10.1,9.2,6.4,6.5],"precipitation_probability_max":[17,61,6,53,90,61,2,3]}},{"g":"ny","name":"Saratoga Springs","st":"New York","abbr":"NY","lat":43.083,"lon":-73.785,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[51,63,51,3,81,51,3,3],"temperature_2m_max":[19.8,19.2,18.1,14.4,19.8,7.7,14.1,17.2],"temperature_2m_min":[10.2,13.3,10.5,6.9,7.7,0.2,-0.8,3.0],"apparent_temperature_max":[19.4,17.8,18.0,11.5,19.0,2.8,9.5,14.5],"apparent_temperature_min":[9.3,13.1,10.4,4.0,5.1,-4.3,-5.1,0.4],"wind_speed_10m_max":[3.5,7.5,4.5,3.2,7.7,7.0,5.7,3.6],"precipitation_probability_max":[86,67,8,9,95,10,1,1]}},{"g":"ny","name":"Schenectady","st":"New York","abbr":"NY","lat":42.814,"lon":-73.94,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[53,51,3,3,80,51,3,3],"temperature_2m_max":[17.9,20.2,19.2,15.2,22.9,8.4,15.0,19.6],"temperature_2m_min":[10.6,14.7,11.3,8.2,8.4,1.3,0.8,4.4],"apparent_temperature_max":[16.8,19.0,20.6,12.0,21.7,3.4,10.2,16.7],"apparent_temperature_min":[9.7,14.0,10.5,6.0,5.2,-3.5,-3.1,1.6],"wind_speed_10m_max":[4.8,8.1,6.3,3.0,7.9,7.5,5.3,3.0],"precipitation_probability_max":[88,44,10,12,95,14,3,1]}},{"g":"ny","name":"Syracuse","st":"New York","abbr":"NY","lat":43.048,"lon":-76.147,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,81,51,3,81,85,3,3],"temperature_2m_max":[16.3,25.1,20.7,15.1,22.0,6.4,16.3,20.4],"temperature_2m_min":[10.7,12.6,11.3,9.0,6.4,2.5,3.0,9.4],"apparent_temperature_max":[17.3,25.5,21.3,12.0,19.9,1.0,11.3,16.0],"apparent_temperature_min":[10.0,11.7,9.9,6.2,1.6,-4.1,-1.3,5.7],"wind_speed_10m_max":[3.2,5.4,5.0,3.2,9.2,8.8,6.0,5.9],"precipitation_probability_max":[34,52,19,39,93,86,3,2]}},{"g":"ny","name":"Troy","st":"New York","abbr":"NY","lat":42.728,"lon":-73.692,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[53,63,3,3,80,51,2,3],"temperature_2m_max":[18.6,20.5,18.3,15.2,18.1,9.8,16.2,17.2],"temperature_2m_min":[11.0,14.0,11.8,8.9,9.8,3.2,1.3,5.1],"apparent_temperature_max":[18.2,18.9,19.5,11.8,17.8,4.7,11.5,13.8],"apparent_temperature_min":[10.1,13.9,11.1,6.7,7.0,-2.1,-3.0,1.4],"wind_speed_10m_max":[3.4,7.5,5.3,4.0,7.5,7.4,5.1,4.4],"precipitation_probability_max":[89,32,12,10,94,19,2,1]}},{"g":"ny","name":"Utica","st":"New York","abbr":"NY","lat":43.101,"lon":-75.233,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[61,65,51,3,81,51,3,3],"temperature_2m_max":[15.4,23.8,19.7,15.6,20.9,5.4,14.4,18.3],"temperature_2m_min":[10.0,13.8,10.6,8.5,5.4,-0.1,-0.1,5.2],"apparent_temperature_max":[15.4,25.2,20.9,13.5,18.4,-0.6,9.6,14.2],"apparent_temperature_min":[8.5,13.5,9.7,5.4,0.3,-6.7,-4.1,2.0],"wind_speed_10m_max":[3.1,3.9,5.9,5.2,10.0,9.9,7.0,6.6],"precipitation_probability_max":[81,70,19,30,96,44,3,1]}},{"g":"ny","name":"White Plains","st":"New York","abbr":"NY","lat":41.034,"lon":-73.763,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,3,3,82,3,0,3],"temperature_2m_max":[21.2,19.9,23.2,18.9,23.4,12.3,14.9,18.9],"temperature_2m_min":[11.4,12.5,13.2,10.3,12.2,4.9,4.4,9.0],"apparent_temperature_max":[20.2,20.2,23.2,17.3,23.7,7.8,10.0,15.3],"apparent_temperature_min":[9.2,11.6,13.1,8.3,8.1,-0.3,0.4,6.1],"wind_speed_10m_max":[4.9,4.1,5.3,4.7,8.0,7.7,4.9,5.0],"precipitation_probability_max":[31,3,8,15,87,16,1,0]}},{"g":"ny","name":"Yonkers","st":"New York","abbr":"NY","lat":40.93,"lon":-73.898,"tz":"America/New_York","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[45,3,3,3,80,3,0,3],"temperature_2m_max":[22.1,20.6,24.4,19.7,24.5,13.0,15.5,19.5],"temperature_2m_min":[11.7,12.6,13.6,11.0,12.7,6.2,5.4,9.5],"apparent_temperature_max":[20.9,21.1,25.2,17.2,24.5,7.6,10.1,15.6],"apparent_temperature_min":[9.8,12.2,13.6,9.4,8.3,0.3,1.3,6.6],"wind_speed_10m_max":[4.6,4.3,4.8,4.8,8.9,8.8,5.5,5.4],"precipitation_probability_max":[35,3,10,17,86,16,1,0]}},{"g":"tx","name":"Abilene","st":"Texas","abbr":"TX","lat":32.449,"lon":-99.733,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,81,80,3,3,3],"temperature_2m_max":[32.4,33.6,32.2,27.0,16.7,16.3,23.4,21.7],"temperature_2m_min":[20.6,23.8,24.0,14.9,10.9,7.8,11.5,17.3],"apparent_temperature_max":[34.0,35.3,32.7,27.4,11.9,14.2,19.7,20.8],"apparent_temperature_min":[20.1,25.4,26.3,11.4,6.1,4.5,8.8,16.0],"wind_speed_10m_max":[7.4,6.7,6.7,9.2,11.2,5.6,7.1,6.6],"precipitation_probability_max":[1,5,55,79,75,1,4,8]}},{"g":"tx","name":"Amarillo","st":"Texas","abbr":"TX","lat":35.222,"lon":-101.831,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,0,3,3,3,3,3,3],"temperature_2m_max":[29.8,30.5,27.9,19.3,13.8,16.3,20.9,19.1],"temperature_2m_min":[18.4,19.3,19.2,11.1,7.3,4.2,9.8,10.7],"apparent_temperature_max":[29.7,30.0,26.3,16.8,6.5,10.8,16.5,17.7],"apparent_temperature_min":[16.5,19.3,17.4,3.6,0.5,-0.1,4.3,8.8],"wind_speed_10m_max":[9.1,5.9,7.5,13.5,11.3,6.9,8.5,6.2],"precipitation_probability_max":[9,7,46,32,13,2,7,2]}},{"g":"tx","name":"Beaumont","st":"Texas","abbr":"TX","lat":30.086,"lon":-94.102,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[82,51,3,51,51,3,3,51],"temperature_2m_max":[31.1,30.2,32.2,29.4,32.2,24.4,27.1,28.6],"temperature_2m_min":[20.1,25.4,22.6,20.5,21.2,15.1,13.6,18.4],"apparent_temperature_max":[35.0,36.3,35.0,31.8,33.1,21.6,25.9,30.9],"apparent_temperature_min":[22.2,30.2,25.6,23.2,21.3,10.4,10.5,18.2],"wind_speed_10m_max":[5.1,5.4,4.5,5.0,7.2,6.8,2.9,4.1],"precipitation_probability_max":[44,26,5,12,8,0,2,20]}},{"g":"tx","name":"Brownsville","st":"Texas","abbr":"TX","lat":25.902,"lon":-97.497,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,1,1,3,80,51,51,3],"temperature_2m_max":[32.5,33.1,32.4,30.2,30.1,25.3,27.9,30.4],"temperature_2m_min":[25.7,26.7,25.6,24.6,24.4,18.9,22.2,24.2],"apparent_temperature_max":[38.3,35.8,35.2,31.5,30.6,25.8,28.1,31.8],"apparent_temperature_min":[30.8,30.6,28.8,27.6,26.2,14.2,23.4,26.3],"wind_speed_10m_max":[6.0,7.4,7.0,6.4,9.4,9.3,6.1,5.2],"precipitation_probability_max":[5,2,7,5,37,46,30,23]}},{"g":"tx","name":"College Station","st":"Texas","abbr":"TX","lat":30.628,"lon":-96.334,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,51,3,53,3,3,3],"temperature_2m_max":[29.7,33.0,30.8,31.4,25.2,22.4,26.4,28.3],"temperature_2m_min":[20.8,25.3,23.6,20.0,17.0,12.9,12.7,19.1],"apparent_temperature_max":[34.8,36.8,35.3,32.8,27.0,19.1,25.5,28.7],"apparent_temperature_min":[23.4,29.8,27.8,22.3,11.6,8.2,9.6,17.6],"wind_speed_10m_max":[4.5,6.5,5.2,4.2,8.9,7.3,3.2,3.5],"precipitation_probability_max":[18,12,21,8,6,1,2,8]}},{"g":"tx","name":"Corpus Christi","st":"Texas","abbr":"TX","lat":27.801,"lon":-97.396,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,1,3,3,3,3],"temperature_2m_max":[33.0,33.2,32.6,29.3,30.6,25.5,26.6,28.7],"temperature_2m_min":[25.9,26.9,26.5,26.2,23.7,18.3,20.2,25.3],"apparent_temperature_max":[38.0,37.1,35.8,30.4,30.1,22.8,27.2,30.4],"apparent_temperature_min":[29.4,32.0,29.5,27.5,20.8,13.0,18.1,26.4],"wind_speed_10m_max":[6.6,6.9,6.7,6.6,9.0,9.3,5.2,5.4],"precipitation_probability_max":[13,6,7,8,28,9,9,15]}},{"g":"tx","name":"Denton","st":"Texas","abbr":"TX","lat":33.215,"lon":-97.133,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,2,3,51,3,3,53],"temperature_2m_max":[32.0,33.3,32.6,30.9,19.8,18.6,23.9,20.4],"temperature_2m_min":[21.9,24.6,24.4,19.4,13.0,8.0,12.4,16.7],"apparent_temperature_max":[33.6,35.1,34.4,31.7,17.2,16.3,20.7,18.7],"apparent_temperature_min":[22.9,27.8,27.7,16.6,7.9,4.7,9.1,16.1],"wind_speed_10m_max":[6.1,6.7,6.1,8.4,11.1,6.6,3.9,4.1],"precipitation_probability_max":[3,4,10,27,24,0,3,5]}},{"g":"tx","name":"Frisco","st":"Texas","abbr":"TX","lat":33.151,"lon":-96.824,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,3,3,3,51],"temperature_2m_max":[31.1,33.5,32.3,31.2,19.7,18.9,23.7,20.4],"temperature_2m_min":[21.1,24.4,24.4,19.2,13.0,8.0,12.6,16.8],"apparent_temperature_max":[32.0,35.2,34.2,30.9,16.8,16.3,20.5,18.0],"apparent_temperature_min":[21.3,27.3,27.4,17.4,7.8,4.8,8.8,16.3],"wind_speed_10m_max":[6.8,7.5,6.8,8.4,10.9,7.2,3.7,4.4],"precipitation_probability_max":[4,4,9,11,11,0,2,6]}},{"g":"tx","name":"Galveston","st":"Texas","abbr":"TX","lat":29.301,"lon":-94.798,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[95,51,3,3,53,3,3,51],"temperature_2m_max":[29.2,29.0,29.1,27.5,27.8,25.4,24.6,26.1],"temperature_2m_min":[25.5,26.3,24.8,24.5,24.8,18.7,20.6,23.6],"apparent_temperature_max":[34.8,34.7,33.1,30.5,31.7,22.0,24.3,27.9],"apparent_temperature_min":[25.2,29.3,25.4,24.7,22.2,12.7,18.2,24.4],"wind_speed_10m_max":[7.6,6.4,7.0,6.2,11.8,12.6,6.9,9.0],"precipitation_probability_max":[31,16,9,14,24,4,5,37]}},{"g":"tx","name":"Garland","st":"Texas","abbr":"TX","lat":32.913,"lon":-96.639,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,3,3,3,55],"temperature_2m_max":[29.3,30.7,29.4,31.8,21.5,19.9,24.4,21.4],"temperature_2m_min":[20.1,24.4,23.9,21.5,15.1,11.4,15.6,16.5],"apparent_temperature_max":[33.1,35.3,33.7,31.7,19.8,17.4,21.5,20.0],"apparent_temperature_min":[21.7,28.2,27.9,22.5,10.6,7.7,12.2,16.6],"wind_speed_10m_max":[4.0,4.6,4.6,6.9,8.3,6.0,3.0,3.6],"precipitation_probability_max":[4,4,10,9,4,0,1,5]}},{"g":"tx","name":"Grand Prairie","st":"Texas","abbr":"TX","lat":32.746,"lon":-96.998,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,3,3,3,51],"temperature_2m_max":[31.4,33.5,32.4,32.1,21.9,20.3,25.1,22.4],"temperature_2m_min":[21.8,24.8,24.9,21.9,15.8,12.5,16.5,18.0],"apparent_temperature_max":[33.8,35.7,34.4,31.9,19.9,17.2,22.1,19.9],"apparent_temperature_min":[23.1,28.1,29.0,21.9,11.3,8.9,13.4,17.3],"wind_speed_10m_max":[5.9,6.7,6.3,6.8,8.5,5.8,2.9,3.9],"precipitation_probability_max":[5,3,9,9,8,0,1,5]}},{"g":"tx","name":"Irving","st":"Texas","abbr":"TX","lat":32.814,"lon":-96.949,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,3,3,3,51],"temperature_2m_max":[31.8,33.5,32.5,32.0,21.4,20.0,24.6,22.1],"temperature_2m_min":[21.8,25.0,25.2,21.2,15.4,12.0,16.4,17.6],"apparent_temperature_max":[34.3,35.7,34.8,32.0,19.2,17.4,21.6,19.6],"apparent_temperature_min":[23.2,28.4,29.3,21.4,10.8,8.4,13.2,17.6],"wind_speed_10m_max":[5.5,6.5,6.0,6.8,8.5,6.0,3.0,4.0],"precipitation_probability_max":[6,3,10,10,8,0,1,6]}},{"g":"tx","name":"Killeen","st":"Texas","abbr":"TX","lat":31.117,"lon":-97.728,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,3,3,3,51],"temperature_2m_max":[31.2,33.0,32.6,31.1,23.0,20.4,25.1,26.1],"temperature_2m_min":[21.6,24.6,23.7,19.5,14.8,11.3,12.8,18.9],"apparent_temperature_max":[34.5,34.7,34.1,31.4,18.9,17.1,23.0,24.9],"apparent_temperature_min":[23.8,28.6,27.4,21.5,9.2,6.7,10.2,17.7],"wind_speed_10m_max":[5.1,6.3,5.2,5.4,11.4,7.4,3.4,3.7],"precipitation_probability_max":[8,5,7,8,24,1,1,5]}},{"g":"tx","name":"Laredo","st":"Texas","abbr":"TX","lat":27.506,"lon":-99.508,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,1,0,3,3,3,3,3],"temperature_2m_max":[36.2,35.7,35.2,31.4,30.2,24.8,29.0,29.5],"temperature_2m_min":[24.9,25.1,25.1,25.3,22.2,17.9,19.4,22.2],"apparent_temperature_max":[39.6,37.6,36.6,31.4,27.5,22.4,28.4,30.7],"apparent_temperature_min":[28.2,28.4,27.8,25.9,19.1,12.5,17.6,23.3],"wind_speed_10m_max":[5.9,6.7,7.2,7.4,9.3,9.5,6.2,6.1],"precipitation_probability_max":[3,2,3,7,15,10,6,10]}},{"g":"tx","name":"Lubbock","st":"Texas","abbr":"TX","lat":33.578,"lon":-101.855,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,3,3,3,3,3,3,3],"temperature_2m_max":[31.9,32.8,26.7,22.0,15.6,16.8,20.9,23.1],"temperature_2m_min":[18.3,19.0,20.4,12.6,10.2,7.0,11.7,13.8],"apparent_temperature_max":[32.5,33.4,26.2,22.6,8.5,12.8,17.1,21.3],"apparent_temperature_min":[18.7,20.6,21.6,6.3,3.0,3.5,7.4,12.0],"wind_speed_10m_max":[6.9,7.4,6.6,10.4,10.3,4.9,7.4,4.9],"precipitation_probability_max":[1,23,49,59,24,3,7,4]}},{"g":"tx","name":"McAllen","st":"Texas","abbr":"TX","lat":26.203,"lon":-98.23,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,51,80,3,3,1],"temperature_2m_max":[34.6,35.4,34.6,31.0,31.4,25.7,28.4,31.9],"temperature_2m_min":[25.4,26.7,26.0,25.5,23.3,19.2,20.8,23.5],"apparent_temperature_max":[38.0,38.2,36.5,32.1,31.4,25.1,29.3,33.5],"apparent_temperature_min":[30.2,30.7,29.7,27.7,25.5,14.2,19.6,25.5],"wind_speed_10m_max":[6.1,7.0,6.4,6.2,7.9,7.7,4.8,5.5],"precipitation_probability_max":[3,2,5,9,32,17,20,17]}},{"g":"tx","name":"McKinney","st":"Texas","abbr":"TX","lat":33.198,"lon":-96.615,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,3,3,3,51],"temperature_2m_max":[31.2,33.0,31.9,31.2,19.6,19.0,23.6,19.1],"temperature_2m_min":[20.5,24.5,24.0,19.1,12.9,8.1,11.7,16.4],"apparent_temperature_max":[32.4,34.2,34.4,31.0,16.8,16.7,20.3,18.5],"apparent_temperature_min":[21.8,27.4,27.3,17.1,7.5,4.7,7.8,14.8],"wind_speed_10m_max":[6.3,7.9,7.0,8.3,11.2,7.3,3.8,4.4],"precipitation_probability_max":[3,5,10,8,8,0,2,5]}},{"g":"tx","name":"Mesquite","st":"Texas","abbr":"TX","lat":32.767,"lon":-96.599,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,3,3,3,53],"temperature_2m_max":[31.5,32.8,31.7,31.7,21.5,20.2,24.3,19.7],"temperature_2m_min":[20.2,24.6,24.5,19.9,14.2,10.1,12.4,15.6],"apparent_temperature_max":[33.8,35.5,34.2,31.8,19.3,17.1,21.5,19.7],"apparent_temperature_min":[21.9,27.9,28.1,21.3,9.4,6.3,9.1,15.7],"wind_speed_10m_max":[5.1,5.8,5.2,7.3,9.8,6.8,3.2,3.1],"precipitation_probability_max":[4,4,11,9,3,0,0,5]}},{"g":"tx","name":"Midland","st":"Texas","abbr":"TX","lat":31.997,"lon":-102.078,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,65,81,53,3,3,51,3],"temperature_2m_max":[32.4,34.5,24.3,21.5,15.6,16.2,15.9,24.9],"temperature_2m_min":[21.0,21.2,20.5,14.6,11.6,8.3,12.3,14.7],"apparent_temperature_max":[33.2,35.7,27.3,23.3,8.4,12.7,12.8,24.3],"apparent_temperature_min":[20.5,23.0,21.8,8.3,3.9,4.4,9.3,12.6],"wind_speed_10m_max":[7.0,6.1,5.1,12.2,12.1,5.3,8.1,6.1],"precipitation_probability_max":[0,53,79,79,76,5,6,4]}},{"g":"tx","name":"Odessa","st":"Texas","abbr":"TX","lat":31.846,"lon":-102.368,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[0,81,53,55,51,3,51,3],"temperature_2m_max":[32.3,34.3,24.5,21.4,14.8,15.9,18.4,24.1],"temperature_2m_min":[20.5,20.7,20.4,14.8,11.7,8.6,13.2,14.8],"apparent_temperature_max":[33.3,34.7,27.8,23.6,8.0,12.6,13.6,23.7],"apparent_temperature_min":[20.5,22.1,22.0,7.8,3.6,4.4,9.4,12.2],"wind_speed_10m_max":[6.8,6.5,4.4,13.5,12.9,5.7,8.6,6.7],"precipitation_probability_max":[0,49,71,76,78,8,5,3]}},{"g":"tx","name":"Pasadena","st":"Texas","abbr":"TX","lat":29.691,"lon":-95.209,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,51,3,3,3],"temperature_2m_max":[31.0,33.6,32.8,31.5,31.8,25.4,27.5,30.1],"temperature_2m_min":[23.7,26.6,24.8,23.6,23.4,17.0,17.2,21.4],"apparent_temperature_max":[36.3,37.1,36.3,33.4,31.7,23.1,25.8,32.0],"apparent_temperature_min":[26.9,31.9,27.1,26.7,21.6,12.4,14.0,20.8],"wind_speed_10m_max":[4.4,5.6,5.4,4.5,6.5,5.8,3.2,3.9],"precipitation_probability_max":[31,17,10,11,10,2,3,21]}},{"g":"tx","name":"Plano","st":"Texas","abbr":"TX","lat":33.02,"lon":-96.699,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,51,3,3,3,3,3,53],"temperature_2m_max":[31.3,33.5,31.8,31.5,20.5,19.3,24.0,20.9],"temperature_2m_min":[20.6,24.3,24.4,20.0,14.1,9.9,14.4,16.4],"apparent_temperature_max":[33.5,35.2,33.9,31.2,17.9,16.8,20.7,19.2],"apparent_temperature_min":[21.5,27.6,28.2,19.8,9.1,6.4,10.8,16.1],"wind_speed_10m_max":[5.2,6.5,5.9,7.1,9.5,6.7,3.1,4.0],"precipitation_probability_max":[4,4,9,9,7,0,1,5]}},{"g":"tx","name":"Round Rock","st":"Texas","abbr":"TX","lat":30.508,"lon":-97.679,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,51,2,3,3,3,51],"temperature_2m_max":[31.7,33.9,33.5,31.6,24.4,21.6,25.9,28.1],"temperature_2m_min":[22.9,25.5,24.9,20.3,15.6,12.4,13.0,19.6],"apparent_temperature_max":[36.0,35.5,34.9,32.1,23.6,18.1,24.0,27.2],"apparent_temperature_min":[25.3,29.6,28.6,22.5,9.6,7.3,10.2,18.6],"wind_speed_10m_max":[4.6,6.4,6.8,5.4,10.5,7.8,3.6,4.4],"precipitation_probability_max":[11,10,21,7,12,1,1,7]}},{"g":"tx","name":"San Marcos","st":"Texas","abbr":"TX","lat":29.883,"lon":-97.941,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[51,3,3,3,3,3,3,3],"temperature_2m_max":[31.6,34.1,33.9,31.7,25.2,22.8,26.2,29.0],"temperature_2m_min":[21.5,25.4,24.7,19.7,16.3,13.5,13.5,19.0],"apparent_temperature_max":[35.5,35.8,35.2,32.3,24.1,19.5,24.7,28.7],"apparent_temperature_min":[24.6,29.4,27.8,22.4,10.3,8.1,10.8,18.6],"wind_speed_10m_max":[5.2,7.1,7.8,4.9,11.3,8.7,3.0,3.6],"precipitation_probability_max":[17,7,20,6,15,2,2,9]}},{"g":"tx","name":"Sugar Land","st":"Texas","abbr":"TX","lat":29.62,"lon":-95.635,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,2,51,3,3,3],"temperature_2m_max":[32.1,34.8,33.2,32.0,31.1,25.6,28.0,31.0],"temperature_2m_min":[23.7,25.9,24.6,22.3,21.8,17.6,16.7,20.4],"apparent_temperature_max":[37.0,38.4,35.8,33.3,31.0,22.8,26.3,32.7],"apparent_temperature_min":[25.9,31.2,27.4,24.5,20.0,13.1,13.5,20.2],"wind_speed_10m_max":[5.1,5.8,5.4,6.2,7.6,6.5,3.8,4.7],"precipitation_probability_max":[57,15,7,9,10,3,2,21]}},{"g":"tx","name":"The Woodlands","st":"Texas","abbr":"TX","lat":30.158,"lon":-95.489,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,3,3,3,51],"temperature_2m_max":[31.9,34.0,31.0,33.1,30.6,24.8,28.0,31.2],"temperature_2m_min":[22.0,26.3,22.9,21.9,22.5,17.3,16.9,20.9],"apparent_temperature_max":[36.3,39.1,37.1,34.4,30.4,22.2,26.4,32.4],"apparent_temperature_min":[25.0,31.7,26.0,24.7,19.3,13.0,13.8,19.8],"wind_speed_10m_max":[5.4,5.4,4.9,5.0,6.0,5.4,2.5,3.2],"precipitation_probability_max":[48,22,9,8,6,1,2,14]}},{"g":"tx","name":"Tyler","st":"Texas","abbr":"TX","lat":32.351,"lon":-95.301,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,0,3,3,3,51],"temperature_2m_max":[31.6,32.5,31.9,31.6,24.7,21.2,24.9,20.5],"temperature_2m_min":[18.9,24.6,24.4,18.8,14.7,8.6,10.7,16.0],"apparent_temperature_max":[34.1,35.7,35.3,32.9,24.4,18.2,22.6,18.0],"apparent_temperature_min":[20.7,28.6,28.4,20.9,10.0,4.6,7.2,13.6],"wind_speed_10m_max":[4.6,4.8,5.4,4.6,7.3,5.8,2.9,3.8],"precipitation_probability_max":[5,11,20,1,1,0,1,8]}},{"g":"tx","name":"Waco","st":"Texas","abbr":"TX","lat":31.549,"lon":-97.147,"tz":"America/Chicago","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,51,3,3,51],"temperature_2m_max":[30.1,33.0,31.1,31.9,23.6,20.9,25.5,26.1],"temperature_2m_min":[20.2,24.8,24.9,19.8,15.8,11.9,13.4,18.5],"apparent_temperature_max":[34.1,35.6,34.4,32.4,21.9,17.1,23.3,24.3],"apparent_temperature_min":[22.3,28.6,27.9,21.8,10.4,7.6,10.6,17.1],"wind_speed_10m_max":[5.1,5.9,5.5,5.3,10.4,7.3,3.4,4.2],"precipitation_probability_max":[11,8,16,4,15,0,1,5]}},{"g":"world","name":"London","st":"United Kingdom","abbr":"","lat":51.51,"lon":-0.13,"tz":"Europe/London","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[51,51,3,3,53,3,3,3],"temperature_2m_max":[17.4,19.9,18.6,18.8,16.0,12.5,13.4,12.7],"temperature_2m_min":[12.9,14.8,11.0,14.6,10.9,7.6,8.9,8.9],"apparent_temperature_max":[17.8,17.7,15.7,17.8,15.2,8.6,8.8,7.1],"apparent_temperature_min":[11.7,12.7,9.7,13.0,7.6,4.7,5.4,5.1],"wind_speed_10m_max":[4.0,6.2,4.8,5.1,4.3,4.5,5.6,6.9],"precipitation_probability_max":[90,51,0,4,68,4,16,14]}},{"g":"world","name":"Paris","st":"France","abbr":"","lat":48.86,"lon":2.35,"tz":"Europe/Paris","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,45,3,3,2,61,3],"temperature_2m_max":[20.6,24.1,19.5,24.5,21.1,15.8,13.1,14.8],"temperature_2m_min":[8.3,15.4,11.3,10.1,11.5,7.4,5.8,7.3],"apparent_temperature_max":[18.6,22.9,18.8,23.8,19.7,11.6,9.0,11.2],"apparent_temperature_min":[6.4,14.9,11.3,9.1,9.3,5.6,3.0,4.0],"wind_speed_10m_max":[3.6,4.2,2.1,2.8,4.7,5.3,5.4,5.1],"precipitation_probability_max":[8,51,0,0,39,27,22,27]}},{"g":"world","name":"Tokyo","st":"Japan","abbr":"","lat":35.68,"lon":139.69,"tz":"Asia/Tokyo","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[1,2,53,2,51,51,2,3],"temperature_2m_max":[24.9,23.0,23.8,22.7,25.1,23.4,23.9,27.5],"temperature_2m_min":[16.3,16.3,18.0,16.4,15.7,16.4,13.9,16.9],"apparent_temperature_max":[25.7,25.3,26.2,23.1,26.2,23.0,23.4,27.7],"apparent_temperature_min":[17.0,16.9,18.4,15.9,15.7,16.0,13.6,17.8],"wind_speed_10m_max":[2.0,1.6,2.2,2.1,2.5,2.8,2.9,5.1],"precipitation_probability_max":[2,18,69,25,4,12,1,20]}},{"g":"world","name":"Toronto","st":"Canada","abbr":"","lat":43.65,"lon":-79.38,"tz":"America/Toronto","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,51,3,63,81,85,3,3],"temperature_2m_max":[20.4,24.0,17.6,11.9,16.0,8.6,16.7,17.8],"temperature_2m_min":[14.0,14.9,11.1,9.6,6.4,1.4,6.4,12.8],"apparent_temperature_max":[21.2,25.5,17.9,8.7,14.7,3.0,11.1,13.6],"apparent_temperature_min":[14.1,14.5,9.5,5.5,0.4,-4.2,1.5,9.0],"wind_speed_10m_max":[4.5,5.7,4.3,9.0,9.9,7.7,7.3,7.2],"precipitation_probability_max":[3,62,8,56,74,20,0,6]}},{"g":"world","name":"Reykjavík","st":"Iceland","abbr":"","lat":64.15,"lon":-21.94,"tz":"Atlantic/Reykjavik","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[61,63,61,3,51,63,63,53],"temperature_2m_max":[10.0,9.2,9.6,5.7,8.2,9.5,10.0,10.5],"temperature_2m_min":[7.4,5.5,4.5,1.7,5.4,7.2,7.0,9.8],"apparent_temperature_max":[5.5,6.2,6.0,1.0,3.9,3.7,4.0,5.5],"apparent_temperature_min":[-1.3,2.5,-5.6,-6.8,0.9,0.8,-0.0,4.1],"wind_speed_10m_max":[14.7,5.3,18.2,15.6,6.2,13.7,11.8,10.9],"precipitation_probability_max":[100,96,100,100,24,86,76,77]}},{"g":"world","name":"Ulaanbaatar","st":"Mongolia","abbr":"","lat":47.89,"lon":106.91,"tz":"Asia/Ulaanbaatar","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[71,3,3,85,73,71,2,2],"temperature_2m_max":[4.5,7.5,6.4,2.9,6.8,-1.5,-0.5,-2.3],"temperature_2m_min":[-3.4,-3.9,-1.1,-2.4,-3.2,-5.9,-8.2,-8.8],"apparent_temperature_max":[-0.2,2.7,1.6,-1.1,3.3,-6.7,-5.8,-7.5],"apparent_temperature_min":[-6.3,-7.3,-4.5,-6.0,-7.4,-10.5,-12.6,-12.7],"wind_speed_10m_max":[3.5,3.4,3.3,2.2,4.5,4.8,3.1,4.5],"precipitation_probability_max":[2,0,0,4,47,33,20,4]}},{"g":"world","name":"Sydney","st":"Australia","abbr":"","lat":-33.87,"lon":151.21,"tz":"Australia/Sydney","daily":{"time":["2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19","2026-10-20"],"weather_code":[81,81,51,53,53,51,51,0],"temperature_2m_max":[23.8,16.3,17.3,18.6,18.4,19.5,20.4,21.4],"temperature_2m_min":[15.8,14.4,12.4,14.2,14.6,12.4,12.7,14.8],"apparent_temperature_max":[24.3,12.9,16.2,17.1,17.6,20.1,20.9,22.2],"apparent_temperature_min":[14.8,10.4,11.5,13.3,13.9,12.2,13.0,15.1],"wind_speed_10m_max":[4.8,7.6,4.5,5.3,4.9,4.1,5.2,5.3],"precipitation_probability_max":[100,98,90,96,84,71,45,31]}},{"g":"world","name":"Singapore","st":"Singapore","abbr":"","lat":1.29,"lon":103.85,"tz":"Asia/Singapore","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[80,80,81,55,51,55,51,51],"temperature_2m_max":[32.4,31.0,31.2,30.9,30.5,30.9,30.8,30.2],"temperature_2m_min":[27.3,25.2,25.3,25.4,24.3,26.0,25.0,25.3],"apparent_temperature_max":[37.7,38.9,37.3,38.0,38.1,36.8,38.0,36.3],"apparent_temperature_min":[32.1,30.7,30.3,31.5,28.9,31.9,30.3,31.0],"wind_speed_10m_max":[2.9,2.6,4.2,3.0,2.3,2.7,2.1,3.3],"precipitation_probability_max":[96,96,100,88,92,100,94,88]}},{"g":"world","name":"Dubai","st":"United Arab Emirates","abbr":"","lat":25.2,"lon":55.27,"tz":"Asia/Dubai","daily":{"time":["2026-10-12","2026-10-13","2026-10-14","2026-10-15","2026-10-16","2026-10-17","2026-10-18","2026-10-19"],"weather_code":[3,3,3,3,2,0,0,0],"temperature_2m_max":[35.2,37.9,35.9,34.8,34.1,34.5,34.9,33.4],"temperature_2m_min":[26.3,27.6,27.6,27.7,27.8,27.0,26.4,25.8],"apparent_temperature_max":[41.4,39.8,39.7,41.1,41.3,40.3,40.0,40.3],"apparent_temperature_min":[31.1,32.6,31.5,33.6,34.6,32.6,30.8,31.9],"wind_speed_10m_max":[4.0,3.8,3.8,3.9,3.8,3.6,3.6,4.3],"precipitation_probability_max":[0,0,0,0,8,0,0,2]}}]}</script>
+<script>
+(() => {
+  "use strict";
+  const SNAP = JSON.parse(document.getElementById("snapshot").textContent);
+  const $ = (s) => document.querySelector(s);
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- storage (per-viewer convenience only) ---------- */
+  const store = {
+    get() { try { return JSON.parse(localStorage.getItem("weathercrab") || "{}"); } catch (e) { return {}; } },
+    set(v) { try { localStorage.setItem("weathercrab", JSON.stringify(v)); } catch (e) {} }
+  };
+  const saved = store.get();
+
+  /* ---------- weather helpers ---------- */
+  const CODES = {
+    0: "clear sky", 1: "mainly clear", 2: "partly cloudy", 3: "overcast", 45: "fog", 48: "freezing fog",
+    51: "light drizzle", 53: "moderate drizzle", 55: "heavy drizzle", 56: "freezing drizzle", 57: "freezing drizzle",
+    61: "light rain", 63: "moderate rain", 65: "heavy rain", 66: "freezing rain", 67: "freezing rain",
+    71: "light snow", 73: "moderate snow", 75: "heavy snow", 77: "snow grains",
+    80: "light showers", 81: "showers", 82: "heavy showers", 85: "snow showers", 86: "heavy snow showers",
+    95: "thunderstorm", 96: "thunderstorm & hail", 99: "thunderstorm & hail"
+  };
+  const isSnow = (c) => (c >= 71 && c <= 77) || c === 85 || c === 86;
+  const isRain = (c) => (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95;
+
+  function toDays(daily) {
+    return daily.time.map((t, i) => {
+      const max = daily.temperature_2m_max[i], min = daily.temperature_2m_min[i];
+      return {
+        date: t,
+        code: daily.weather_code[i] ?? 3,
+        max, min,
+        amax: daily.apparent_temperature_max?.[i] ?? max,
+        amin: daily.apparent_temperature_min?.[i] ?? min,
+        wind: daily.wind_speed_10m_max?.[i] ?? 0,
+        pop: daily.precipitation_probability_max?.[i] ?? 0
+      };
+    }).filter((d) => d.max != null && d.min != null);
+  }
+  const snapCities = SNAP.cities.map((c) => ({
+    g: c.g, name: c.name.toLowerCase(), st: c.st, abbr: c.abbr,
+    full: c.abbr === "DC" || !c.st || c.st === c.name ? c.name : `${c.name}, ${c.st}`,
+    lat: c.lat, lon: c.lon, tz: c.tz, days: toDays(c.daily)
+  }));
+
+  /* what to wear: average "feels like" of the day picks the layer */
+  function dressFor(d) {
+    const feels = (d.amax + d.amin) / 2;
+    let tier = feels < 3 ? "bundle" : feels < 10 ? "coat" : feels < 16 ? "sweater" : feels < 22 ? "light" : feels < 28 ? "tee" : "hot";
+    const snow = isSnow(d.code);
+    const rain = !snow && (isRain(d.code) || d.pop >= 70);
+    if (snow && (tier !== "bundle" && tier !== "coat")) tier = "coat";
+    return { tier, rain, snow, sunny: d.code <= 1 };
+  }
+  const WEAR = {
+    bundle: "a puffer, beanie and mittens",
+    coat: "a long coat and scarf",
+    sweater: "a striped sweater and scarf",
+    light: "a denim jacket",
+    tee: "a t-shirt and shorts",
+    hot: "a t-shirt, shorts and sun hat"
+  };
+  function wearText(o) {
+    const rc = o.rain && (o.tier === "coat" || o.tier === "sweater" || o.tier === "light");
+    const base = rc ? (o.tier === "coat" ? "a yellow raincoat and scarf" : "a yellow raincoat") : o.tier === "bundle" && o.rain ? "a puffer and mittens" : WEAR[o.tier];
+    return base + (o.rain ? ", holding an umbrella" : "");
+  }
+  const GLOW = { bundle: "#c9dcf3", coat: "#c4e1ec", sweater: "#c2e6dc", light: "#d2ebcb", tee: "#f1e6ae", hot: "#f6d3b3" };
+  function mix(a, b, t) {
+    const p = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+    const x = p(a), y = p(b);
+    return "#" + x.map((v, i) => Math.round(v + (y[i] - v) * t).toString(16).padStart(2, "0")).join("");
+  }
+  function glowFor(o) {
+    let c = GLOW[o.tier];
+    if (o.rain) c = mix(c, "#bccfdf", .45);
+    if (o.snow) c = mix(c, "#dde7f3", .4);
+    return c;
+  }
+
+  /* ---------- the crab: a flat 2D take on the Claude Code mascot ---------- */
+  const INK = "#2b2522", CRAB = "#d97757";
+  const S = `stroke="${INK}" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"`;
+  const P = (d, fill) => `<path d="${d}" fill="${fill}" ${S}/>`;
+  const R = (x, y, w, h, fill, rx = 3) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${fill}" ${S}/>`;
+  const L = (d, w = 2.2, c = INK, extra = "") => `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" ${extra}/>`;
+  const mirror = (s) => `<g transform="matrix(-1 0 0 1 240 0)">${s}</g>`;
+  const both = (s) => s + mirror(s);
+
+  /* same grid as the terminal sprite: a 12×4 body, one-cell arms on each side, four thin legs, tall slot eyes */
+  const body = () => R(48, 70, 144, 96, CRAB, 5);
+  const arms = () => both(R(18, 118, 36, 24, CRAB, 4));
+  const legs = (fill) => both(R(60, 156, 12, 34, fill, 2) + R(84, 156, 12, 34, fill, 2));
+  const eyes = () => `<g class="eyes"><rect x="72" y="94" width="12" height="24" rx="2.5" fill="${INK}"/><rect x="156" y="94" width="12" height="24" rx="2.5" fill="${INK}"/></g>`;
+
+  const shorts = (c) => both(R(58.5, 156, 15, 24, c, 2) + R(82.5, 156, 15, 24, c, 2));
+  const sneakers = (c) => both(R(55, 183, 21, 12, c, 5.5) + R(79, 183, 21, 12, c, 5.5));
+  const boots = (c, top = 174) => both(R(56.5, top, 19, 195 - top, c, 4) + R(80.5, top, 19, 195 - top, c, 4) + L(`M58 ${top + 6} L74 ${top + 6} M82 ${top + 6} L98 ${top + 6}`, 2));
+  const sandals = (c) => both(L("M58 185 L74 185 M82 185 L98 185", 4, c) + L("M56 193 L76 193 M80 193 L100 193", 3.2));
+
+  const torso = (fill, top, bottom) => R(43, top, 154, bottom - top, fill, 7);
+  const sleeveLong = (fill, cuff = INK) => R(29, 114.5, 24, 31, fill, 5) + L("M35 117 L35 143", 2, cuff);
+  const sleeveShort = (fill) => R(40, 114.5, 13, 31, fill, 5);
+  const mitten = (c, x = 13) => R(x, 115.5, 20, 29, c, 8);
+
+  const scarf = (c, s) =>
+    R(39, 117, 162, 15, c, 7) +
+    P("M146 129 L144 170 L161 171.5 L162 129 Z", c) +
+    L("M144.6 145 L161.6 146 M144.2 157 L161.3 158", 3.2, s, 'stroke-linecap="butt"') +
+    L("M146.5 173 L146 179 M152.8 173.5 L152.6 179.5 M159 173.8 L159 179.8", 2);
+  const collar = (c) => R(41, 116, 158, 19, c, 9.5);
+  const beanie = (c, cuff, pom) =>
+    P("M46 86 Q46 42 120 40 Q194 42 194 86 Z", c) +
+    L("M78 54 Q76 66 78 78 M100 47 Q98 60 100 76 M140 47 Q142 60 140 76 M162 54 Q164 66 162 78", 1.8, cuff) +
+    R(41, 72, 158, 17, cuff, 8) +
+    L("M58 75 L58 86 M74 75 L74 86 M90 75 L90 86 M106 75 L106 86 M122 75 L122 86 M138 75 L138 86 M154 75 L154 86 M170 75 L170 86 M186 75 L186 86", 1.6, c) +
+    `<circle cx="120" cy="34" r="10" fill="${pom}" ${S}/>`;
+  const bucketHat = (c, band) =>
+    P("M80 74 Q80 42 120 40 Q160 42 160 74 Z", c) +
+    `<path d="M80.4 62 Q120 57 159.6 62 L159.9 70 Q120 65 80.1 70 Z" fill="${band}"/>` +
+    P("M52 82 Q120 62 188 82 Q184 90 172 86 Q120 74 68 86 Q56 90 52 82 Z", c);
+  const shades = () =>
+    R(63, 96, 30, 21, INK, 7) + R(147, 96, 30, 21, INK, 7) + L("M93 103 L147 103", 3) +
+    `<path d="M69 101 L76 101 M153 101 L160 101" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".7"/>`;
+  function umbrella(c, grip) {
+    const hw = 66, h = 42, n = 6, w = (2 * hw) / n;
+    let d = `M${-hw} ${h} Q${-hw + 4} 4 0 0 Q${hw - 4} 4 ${hw} ${h}`;
+    for (let i = n - 1; i >= 0; i--) { const x0 = -hw + i * w; d += ` Q${(x0 + w / 2).toFixed(1)} ${h - 8} ${x0.toFixed(1)} ${h}`; }
+    let ribs = "";
+    for (let i = 1; i < n; i++) { const x = -hw + i * w; ribs += `M0 0 Q${(x / 2).toFixed(1)} 14 ${x.toFixed(1)} ${h}`; }
+    return L("M150 -2 L214 130", 3.4) +
+      L("M214 130 L219.5 141.5 Q223 152 214 154 Q207 155 205.5 148", 3.2) +
+      `<g transform="translate(150 -2) rotate(-25.9)">${L("M0 1 L0 -8", 3.2)}${P(d + " Z", c)}${L(ribs, 2, INK, 'opacity=".5"')}</g>` +
+      grip;
+  }
+
+  const C = {
+    puffer: "#eef1f3", mitten: "#c84b3c", hat: "#93a98d", hatCuff: "#7b9276", pom: "#f4ecdc", pufferPants: "#5b5f66", pufferBoots: "#8b6a52",
+    coat: "#34414d", coatLine: "#56636f", coatBtn: "#8f9ba7", scarfCream: "#f1e6d2", scarfRed: "#c9553f", brownBoots: "#7d5338",
+    mustard: "#e9b94a", mustardStripe: "#f8de9c", darkPants: "#36322f", cream: "#efe6d6",
+    denim: "#7899bb", denimDark: "#5d7ea1", jeans: "#4a6584", tee: "#f8f4ec", white: "#f6f1e8",
+    sky: "#9cc3e0", navyShorts: "#4a6584", yellow: "#f3c95c", sageShorts: "#86a78f", sandal: "#8b6a52", straw: "#efdcae", hatBand: "#4a6584",
+    rain: "#efbf47", rainDark: "#b98a24", rainBoots: "#4f7561", umbrella: "#5f86ad"
+  };
+
+  function crabSVG(o, opts = {}) {
+    const t = o.tier, umb = o.rain;
+    const raincoat = umb && (t === "coat" || t === "sweater" || t === "light");
+    let legFill = C.darkPants, lower = "", feet = "", top = "", sleeves = "", neck = "", hat = "", glasses = false;
+    let grip = R(208, 118, 14, 24, CRAB, 4);
+
+    if (t === "bundle") {
+      legFill = C.pufferPants; feet = boots(C.pufferBoots, 176);
+      top = torso(C.puffer, 122, 182) + L("M44 142 L196 142 M44 162 L196 162", 2.2) + L("M120 135 L120 181", 2);
+      sleeves = both(R(23, 114.5, 30, 31, C.puffer, 9) + L("M38 116 L38 144", 2) + mitten(C.mitten));
+      grip = mitten(C.mitten, 207);
+      neck = collar(C.puffer);
+      if (!umb) hat = beanie(C.hat, C.hatCuff, C.pom);
+    } else if (raincoat) {
+      feet = boots(C.rainBoots, 172);
+      top = torso(C.rain, 122, 180) + L("M120 124 L120 180", 2) +
+        `<rect x="124" y="138" width="10" height="4.5" rx="2" fill="${C.rainDark}"/><rect x="124" y="152" width="10" height="4.5" rx="2" fill="${C.rainDark}"/><rect x="124" y="166" width="10" height="4.5" rx="2" fill="${C.rainDark}"/>` +
+        P("M54 156 L80 156 L80 163 Q67 166 54 163 Z", C.rain) + P("M160 156 L186 156 L186 163 Q173 166 160 163 Z", C.rain);
+      sleeves = both(sleeveLong(C.rain));
+      if (t === "coat") neck = scarf(C.scarfCream, C.scarfRed);
+    } else if (t === "coat") {
+      feet = boots(C.brownBoots, 176);
+      top = torso(C.coat, 124, 184) + L("M102 124 L120 148 L138 124", 2.2) + L("M121 148 L122 183", 2, C.coatLine) +
+        `<circle cx="131" cy="158" r="3" fill="${C.coatBtn}"/><circle cx="131" cy="173" r="3" fill="${C.coatBtn}"/>` +
+        L("M58 168 L82 169 M158 169 L182 168", 2.4, C.coatLine);
+      sleeves = both(sleeveLong(C.coat, C.coatLine));
+      neck = scarf(C.scarfCream, C.scarfRed);
+    } else if (t === "sweater") {
+      feet = sneakers(C.cream);
+      top = torso("url(#knit)", 124, 172) + L("M44 164 L196 164", 2);
+      sleeves = both(sleeveLong("url(#knit)"));
+      neck = scarf(C.mustard, C.mustardStripe);
+    } else if (t === "light") {
+      legFill = C.jeans; feet = sneakers(C.white);
+      top = torso(C.denim, 124, 172) + R(104, 123, 32, 49, C.tee, 2) +
+        `<rect x="58" y="134" width="20" height="13" rx="2" fill="none" stroke="${C.denimDark}" stroke-width="2"/><rect x="162" y="134" width="20" height="13" rx="2" fill="none" stroke="${C.denimDark}" stroke-width="2"/>` +
+        L("M45 164 L102 164 M138 164 L195 164", 2, C.denimDark);
+      sleeves = both(sleeveLong(C.denim, C.denimDark));
+    } else {
+      const hot = t === "hot";
+      legFill = CRAB;
+      lower = shorts(hot ? C.sageShorts : C.navyShorts);
+      feet = umb ? boots(C.rainBoots, 176) : hot ? sandals(C.sandal) : sneakers(C.white);
+      top = torso(hot ? C.yellow : C.sky, 124, 168) + L("M104 124 Q120 134 136 124", 2);
+      sleeves = both(sleeveShort(hot ? C.yellow : C.sky));
+      if (!umb && hot) hat = bucketHat(C.straw, C.hatBand);
+      glasses = !umb && (hot || o.sunny);
+    }
+
+    let s = legs(legFill) + lower + feet + arms() + body() + eyes() + top + sleeves + neck + hat;
+    if (glasses) s += shades();
+    if (umb) s += umbrella(C.umbrella, grip);
+    const label = `crab wearing ${wearText(o)}${glasses ? " and sunglasses" : ""}`;
+    const filt = opts.flat ? "" : ' filter="url(#wob)"';
+    return `<svg class="${opts.flat ? "mini" : "crab"}" viewBox="0 10 240 200" role="img" aria-label="${label}"><g${filt}><g class="breathe">${s}</g></g></svg>`;
+  }
+  const sig = (o) => `${o.tier}|${o.rain}|${o.snow}|${o.sunny && (o.tier === "tee" || o.tier === "hot")}`;
+
+  /* ---------- dates ---------- */
+  const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+  const WEEK = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+  const fmtCache = {};
+  function todayIn(tz) {
+    try { const f = fmtCache[tz] || (fmtCache[tz] = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" })); return f.format(new Date()); }
+    catch (e) { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
+  }
+  const utc = (iso) => new Date(iso + "T00:00:00Z");
+  const diffDays = (a, b) => Math.round((utc(a) - utc(b)) / 864e5);
+  function dayName(iso, today) {
+    const d = diffDays(iso, today);
+    if (d === -1) return "yesterday";
+    if (d === 0) return "today";
+    if (d === 1) return "tomorrow";
+    return WEEK[utc(iso).getUTCDay()];
+  }
+  const shortDate = (iso) => { const d = utc(iso); return `${MONTHS[d.getUTCMonth()]} ${d.getUTCDate()}`; };
+
+  /* ---------- state ---------- */
+  const state = {
+    unit: saved.unit === "c" ? "c" : "f",
+    city: null,
+    idx: 0,
+    today: "",
+    live: false,
+    target: null,
+    shownSig: "",
+    activeHolder: $("#holderA")
+  };
+  const temp = (c) => Math.round(state.unit === "f" ? c * 9 / 5 + 32 : c) + "°";
+  const windTxt = (ms) => state.unit === "f" ? `${Math.round(ms * 2.237)} mph` : `${Math.round(ms)} m/s`;
+
+  const track = $("#track"), prevBtn = $("#prevBtn"), nextBtn = $("#nextBtn");
+
+  function setCity(city, keepDate) {
+    const prevDate = keepDate && state.city ? state.city.days[state.idx]?.date : null;
+    state.city = city;
+    state.today = todayIn(city.tz);
+    let i = prevDate ? city.days.findIndex((d) => d.date === prevDate) : -1;
+    if (i < 0) i = city.days.findIndex((d) => d.date === state.today);
+    if (i < 0) i = city.days.findIndex((d) => d.date > state.today);
+    if (i < 0) i = Math.min(1, city.days.length - 1);
+    state.idx = i;
+    $("#cityName").textContent = city.name;
+    $("#cityBtn").setAttribute("aria-label", `location: ${city.full || city.name}. change city`);
+    renderSlides();
+    jump(i);
+    setDay(i, true);
+    renderNote();
+    store.set({ unit: state.unit, city: { name: city.name, full: city.full, lat: city.lat, lon: city.lon, tz: city.tz } });
+  }
+
+  function renderSlides() {
+    const days = state.city.days;
+    track.innerHTML = days.map((d, i) => `
+      <div class="slide" role="group" aria-roledescription="slide" aria-label="${dayName(d.date, state.today)}, ${i + 1} of ${days.length}">
+        <div class="day">
+          <div class="day-name">${dayName(d.date, state.today)}</div>
+          <div class="day-date">${shortDate(d.date)}</div>
+          <div class="temps"><span class="hi">${temp(d.max)}</span><span class="sep">/</span><span class="lo">${temp(d.min)}</span></div>
+          <div class="cond">${CODES[d.code] || "mixed skies"}</div>
+          <div class="wind"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M3 8h10a3 3 0 1 0-3-3M3 12h15a3 3 0 1 1-3 3M3 16h7"/></svg>${windTxt(d.wind)}</div>
+        </div>
+      </div>`).join("");
+  }
+
+  function jump(i) {
+    const w = track.clientWidth;
+    track.style.scrollSnapType = "none";
+    track.scrollLeft = i * w;
+    requestAnimationFrame(() => { track.style.scrollSnapType = ""; });
+  }
+
+  function go(i) {
+    const n = state.city.days.length;
+    i = Math.max(0, Math.min(n - 1, i));
+    if (i === state.idx) return;
+    state.target = i;
+    clearTimeout(go.t);
+    go.t = setTimeout(() => { state.target = null; }, 900);
+    track.scrollTo({ left: i * track.clientWidth, behavior: reduced ? "auto" : "smooth" });
+    setDay(i);
+  }
+
+  function setDay(i, force) {
+    const days = state.city.days;
+    state.idx = i;
+    const d = days[i];
+    const o = dressFor(d);
+    const s = sig(o);
+    if (force || s !== state.shownSig) {
+      const next = state.activeHolder.id === "holderA" ? $("#holderB") : $("#holderA");
+      next.innerHTML = crabSVG(o);
+      next.classList.add("on");
+      state.activeHolder.classList.remove("on");
+      state.activeHolder = next;
+      state.shownSig = s;
+    }
+    document.documentElement.style.setProperty("--glow", glowFor(o));
+    setFx(o.snow ? "snow" : o.rain ? "rain" : null);
+    prevBtn.disabled = i === 0;
+    nextBtn.disabled = i === days.length - 1;
+    $("#live").textContent = `${dayName(d.date, state.today)}: high ${temp(d.max)}, low ${temp(d.min)}, ${CODES[d.code] || ""}. the crab is wearing ${wearText(o)}.`;
+  }
+
+  let scrollRaf = 0;
+  track.addEventListener("scroll", () => {
+    if (scrollRaf) return;
+    scrollRaf = requestAnimationFrame(() => {
+      scrollRaf = 0;
+      const w = track.clientWidth || 1;
+      const i = Math.round(track.scrollLeft / w);
+      if (state.target != null) { if (i === state.target) state.target = null; return; }
+      if (i !== state.idx && state.city.days[i]) setDay(i);
+    });
+  }, { passive: true });
+  prevBtn.addEventListener("click", () => go(state.idx - 1));
+  nextBtn.addEventListener("click", () => go(state.idx + 1));
+  document.addEventListener("keydown", (e) => {
+    if (openSheet) { if (e.key === "Escape") closeSheet(); return; }
+    if (e.target.closest && e.target.closest("input")) return;
+    if (e.key === "ArrowLeft") { e.preventDefault(); go(state.idx - 1); }
+    if (e.key === "ArrowRight") { e.preventDefault(); go(state.idx + 1); }
+  });
+  new ResizeObserver(() => { jump(state.idx); sizeFx(); }).observe(track);
+
+  /* unit toggle */
+  const unitBtn = $("#unitBtn");
+  function renderUnit() {
+    unitBtn.textContent = state.unit === "f" ? "°c" : "°f";
+    unitBtn.setAttribute("aria-label", state.unit === "f" ? "switch to celsius" : "switch to fahrenheit");
+  }
+  unitBtn.addEventListener("click", () => {
+    state.unit = state.unit === "f" ? "c" : "f";
+    renderUnit();
+    const i = state.idx;
+    renderSlides(); jump(i); setDay(i);
+    const cur = store.get(); cur.unit = state.unit; store.set(cur);
+  });
+
+  function renderNote() {
+    const note = $("#note");
+    if (state.live) note.innerHTML = `live forecast · <a href="https://open-meteo.com" target="_blank" rel="noopener">open-meteo</a>`;
+    else note.innerHTML = `forecast saved ${shortDate(SNAP.fetched)} · <a href="https://open-meteo.com" target="_blank" rel="noopener">open-meteo</a>`;
+  }
+
+  /* ---------- rain & snow ---------- */
+  const fx = { cv: $("#fx"), ctx: null, mode: null, parts: [], raf: 0, last: 0, w: 0, h: 0 };
+  fx.ctx = fx.cv.getContext("2d");
+  function sizeFx() {
+    const r = fx.cv.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+    fx.w = r.width; fx.h = r.height;
+    fx.cv.width = Math.round(r.width * dpr); fx.cv.height = Math.round(r.height * dpr);
+    fx.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function spawn(p, initial) {
+    p.x = Math.random() * (fx.w + 30) - 15;
+    p.y = initial ? Math.random() * fx.h : -12;
+    if (fx.mode === "rain") { p.v = 230 + Math.random() * 120; p.len = 7 + Math.random() * 6; }
+    else { p.v = 22 + Math.random() * 26; p.r = 1.4 + Math.random() * 2; p.ph = Math.random() * 6.28; }
+    return p;
+  }
+  function setFx(mode) {
+    if (reduced) mode = null;
+    if (mode === fx.mode) return;
+    fx.mode = mode;
+    if (!fx.w) sizeFx();
+    fx.parts = mode ? Array.from({ length: mode === "rain" ? 34 : 40 }, () => spawn({}, true)) : [];
+    if (mode && !fx.raf) { fx.last = performance.now(); fx.raf = requestAnimationFrame(tick); }
+    if (!mode) fx.ctx.clearRect(0, 0, fx.w, fx.h);
+  }
+  function tick(now) {
+    const dt = Math.min(.05, (now - fx.last) / 1000); fx.last = now;
+    const c = fx.ctx; c.clearRect(0, 0, fx.w, fx.h);
+    if (!fx.mode) { fx.raf = 0; return; }
+    if (fx.mode === "rain") {
+      c.strokeStyle = "rgba(96,128,160,.5)"; c.lineWidth = 1.5; c.lineCap = "round"; c.beginPath();
+      for (const p of fx.parts) { p.y += p.v * dt; p.x -= p.v * dt * .12; if (p.y > fx.h + 10) spawn(p); c.moveTo(p.x, p.y); c.lineTo(p.x + p.len * .12, p.y - p.len); }
+      c.stroke();
+    } else {
+      c.fillStyle = "rgba(255,255,255,.95)"; c.strokeStyle = "rgba(120,145,175,.55)"; c.lineWidth = 1;
+      for (const p of fx.parts) { p.y += p.v * dt; p.ph += dt * 1.4; const x = p.x + Math.sin(p.ph) * 6; if (p.y > fx.h + 8) spawn(p); c.beginPath(); c.arc(x, p.y, p.r, 0, 6.283); c.fill(); c.stroke(); }
+    }
+    fx.raf = requestAnimationFrame(tick);
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && fx.raf) { cancelAnimationFrame(fx.raf); fx.raf = 0; }
+    else if (!document.hidden && fx.mode && !fx.raf) { fx.last = performance.now(); fx.raf = requestAnimationFrame(tick); }
+  });
+
+  /* ---------- sheets ---------- */
+  let openSheet = null, returnFocus = null;
+  function showSheet(el, focusSel) {
+    returnFocus = document.activeElement;
+    el.hidden = false;
+    openSheet = el;
+    requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add("open")));
+    setTimeout(() => (el.querySelector(focusSel) || el.querySelector("[data-close].round"))?.focus({ preventScroll: true }), reduced ? 0 : 60);
+  }
+  function closeSheet() {
+    const el = openSheet; if (!el) return;
+    openSheet = null;
+    el.classList.remove("open");
+    setTimeout(() => { el.hidden = true; }, reduced ? 0 : 320);
+    returnFocus?.focus?.({ preventScroll: true });
+  }
+  document.querySelectorAll(".sheet-wrap").forEach((w) => w.addEventListener("click", (e) => { if (e.target.closest("[data-close]")) closeSheet(); }));
+
+  /* dates sheet */
+  $("#moreBtn").addEventListener("click", () => {
+    const days = state.city.days;
+    $("#dateList").innerHTML = days.map((d, i) => {
+      const o = dressFor(d);
+      return `<li><button class="row date-row${i === state.idx ? " sel" : ""}" data-i="${i}" ${i === state.idx ? 'aria-current="true"' : ""}>
+        <span class="mini">${crabSVG(o, { flat: true })}</span>
+        <span><b>${dayName(d.date, state.today)}</b><small>${shortDate(d.date)} · ${CODES[d.code] || ""}</small></span>
+        <span class="t">${temp(d.max)} <span>/ ${temp(d.min)}</span></span>
+      </button></li>`;
+    }).join("");
+    showSheet($("#datesSheet"), ".row.sel");
+  });
+  $("#dateList").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-i]"); if (!b) return;
+    const i = +b.dataset.i;
+    closeSheet();
+    setTimeout(() => go(i), reduced ? 0 : 200);
+  });
+
+  /* city sheet */
+  const cityList = $("#cityList"), cityMsg = $("#cityMsg"), citySearch = $("#citySearch");
+  const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+  const GROUPS = [["cap", "state capitals"], ["big", "biggest cities"], ["ca", "more california"], ["fl", "more florida"], ["ny", "more new york"], ["tx", "more texas"], ["world", "around the world"]];
+  function subText(c) {
+    if (c.sub != null) return c.sub;
+    if (c.g === "cap") return c.abbr === "DC" ? "us capital" : `${c.st.toLowerCase()} · state capital`;
+    return (c.st || "").toLowerCase();
+  }
+  function cityRow(c, key) {
+    let t = "";
+    if (!state.live && c.days) {
+      const d = c.days.find((x) => x.date === todayIn(c.tz)) || c.days[1];
+      if (d) t = `${temp(d.max)} / ${temp(d.min)}`;
+    }
+    const sel = state.city && c.full === state.city.full;
+    return `<li><button class="row city-row${sel ? " sel" : ""}" data-key="${key}"${sel ? ' aria-current="true"' : ""}>
+      <span><b>${esc(c.name)}</b><small>${esc(subText(c))}</small></span>
+      <span class="t">${t}</span></button></li>`;
+  }
+  function savedHits(q) {
+    const ql = q.trim().toLowerCase();
+    const all = snapCities.map((c, i) => i);
+    if (!ql) return all;
+    return all.filter((i) => {
+      const c = snapCities[i];
+      return c.name.includes(ql) || c.st.toLowerCase().includes(ql) || (ql.length === 2 && c.abbr.toLowerCase() === ql);
+    });
+  }
+  function savedHTML(hits) {
+    let html = "";
+    for (const [g, label] of GROUPS) {
+      const rows = hits.filter((i) => snapCities[i].g === g);
+      if (rows.length) html += `<li class="sec" role="presentation">${label}</li>` + rows.map((i) => cityRow(snapCities[i], "s" + i)).join("");
+    }
+    return html;
+  }
+  let searchResults = [], searchT = 0, searchAbort = null;
+  function renderCityList() {
+    const q = citySearch.value;
+    const hits = savedHits(q);
+    cityList.innerHTML = savedHTML(hits);
+    cityList.scrollTop = 0;
+    searchResults = [];
+    clearTimeout(searchT);
+    searchAbort?.abort();
+    if (!state.live) {
+      cityMsg.textContent = hits.length ? (q.trim() ? "" : `${snapCities.length} places saved with this week's forecast`) : "nothing saved matches that. try a state name or a code like tx.";
+      return;
+    }
+    cityMsg.textContent = "";
+    if (q.trim().length < 2) return;
+    searchT = setTimeout(async () => {
+      searchAbort = new AbortController();
+      cityMsg.textContent = "searching…";
+      try {
+        const r = await getJSON(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q.trim())}&count=8&language=en&format=json`, 6000, searchAbort.signal);
+        const near = (a, b) => Math.abs(a.lat - b.lat) < .25 && Math.abs(a.lon - b.lon) < .25;
+        searchResults = (r.results || []).map((x) => ({
+          name: String(x.name).toLowerCase(),
+          full: [x.name, x.admin1, x.country].filter(Boolean).join(", "),
+          sub: [x.admin1, x.country].filter(Boolean).join(", ").toLowerCase(),
+          lat: x.latitude, lon: x.longitude, tz: x.timezone
+        })).filter((x) => !hits.some((i) => near(snapCities[i], x)));
+        if (searchResults.length) cityList.insertAdjacentHTML("beforeend", `<li class="sec" role="presentation">more places</li>` + searchResults.map((c, i) => cityRow(c, "r" + i)).join(""));
+        cityMsg.textContent = hits.length || searchResults.length ? "" : `no place called “${q.trim()}”. check the spelling and try again.`;
+      } catch (e) {
+        if (e.name !== "AbortError") cityMsg.textContent = "search isn't reachable right now. pick a saved place.";
+      }
+    }, 280);
+  }
+  citySearch.addEventListener("input", renderCityList);
+  cityList.addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-key]"); if (!b) return;
+    const k = b.dataset.key;
+    const c = k[0] === "s" ? snapCities[+k.slice(1)] : searchResults[+k.slice(1)];
+    if (!c) return;
+    if (state.live) {
+      cityMsg.textContent = "getting the forecast…";
+      const live = await loadLive(c);
+      if (live) { closeSheet(); setCity(live); return; }
+      if (!c.days) { cityMsg.textContent = "couldn't reach the forecast. try again in a moment."; return; }
+    }
+    closeSheet();
+    setCity(c);
+  });
+  $("#cityBtn").addEventListener("click", () => {
+    citySearch.value = "";
+    $("#locBtn").hidden = !(state.live && "geolocation" in navigator);
+    citySearch.placeholder = state.live ? "search any city" : "search a city or state";
+    renderCityList();
+    showSheet($("#citySheet"), "#citySearch");
+    requestAnimationFrame(() => { const sel = cityList.querySelector(".sel"); if (sel) cityList.scrollTop = Math.max(0, sel.offsetTop - cityList.clientHeight / 2); });
+  });
+  $("#locBtn").addEventListener("click", () => {
+    cityMsg.textContent = "finding you…";
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const c = { name: "my location", full: "current location", sub: "", lat: +pos.coords.latitude.toFixed(2), lon: +pos.coords.longitude.toFixed(2) };
+      const live = await loadLive(c);
+      if (live) { closeSheet(); setCity(live); } else cityMsg.textContent = "couldn't reach the forecast. try again in a moment.";
+    }, () => { cityMsg.textContent = "location is off for this page. search for your city instead."; }, { timeout: 8000, maximumAge: 6e5 });
+  });
+
+  /* widget sheet */
+  $("#widgetBtn").addEventListener("click", () => {
+    const days = state.city.days;
+    const ti = Math.max(0, days.findIndex((d) => d.date === state.today));
+    const d = days[ti] || days[0];
+    const o = dressFor(d);
+    const g = glowFor(o);
+    const cat = crabSVG(o, { flat: true });
+    $("#home").style.setProperty("--glow", g);
+    $("#home").innerHTML = `
+      <div class="w w-medium"><div class="wbox"><div class="wglow"></div><div class="wcat">${cat}</div><span class="wt l">${temp(d.min)}</span><span class="wt r">${temp(d.max)}</span></div><label>weathercrab</label></div>
+      <div class="w w-small"><div class="wbox"><div class="wglow"></div><div class="wcat">${cat}</div><span class="wt l">${temp(d.min)}</span><span class="wt r">${temp(d.max)}</span></div><label>weathercrab</label></div>
+      <div class="w-icons">
+        <div class="w"><div class="app-icon">${crabSVG({ tier: "sweater", rain: false, snow: false, sunny: false }, { flat: true })}</div><label>weathercrab</label></div>
+        <div class="w"><div class="app-icon ghost"></div><label>&nbsp;</label></div>
+        <div class="w"><div class="app-icon ghost"></div><label>&nbsp;</label></div>
+        <div class="w"><div class="app-icon ghost"></div><label>&nbsp;</label></div>
+      </div>`;
+    $("#widgetNote").textContent = `${dayName(d.date, state.today)} in ${state.city.name}: ${wearText(o)}`;
+    showSheet($("#widgetSheet"));
+  });
+
+  /* ---------- live data (works when the page may reach open-meteo) ---------- */
+  async function getJSON(url, ms, signal) {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), ms);
+    signal?.addEventListener("abort", () => ac.abort());
+    try {
+      const r = await fetch(url, { signal: ac.signal });
+      if (!r.ok) throw new Error("http " + r.status);
+      return await r.json();
+    } finally { clearTimeout(t); }
+  }
+  async function loadLive(c) {
+    try {
+      const r = await getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,wind_speed_10m_max,precipitation_probability_max&past_days=1&forecast_days=7&timezone=auto&wind_speed_unit=ms`, 7000);
+      const days = toDays(r.daily);
+      if (!days.length) return null;
+      return { ...c, tz: r.timezone || c.tz, days };
+    } catch (e) { return null; }
+  }
+
+  /* ---------- boot ---------- */
+  renderUnit();
+  const want = saved.city;
+  const nyc = snapCities.find((c) => c.g === "big" && c.name === "new york") || snapCities[0];
+  const first = (want && snapCities.find((c) => c.full === want.full)) || nyc;
+  setCity(first);
+  (async () => {
+    const target = want && want.lat != null ? want : first;
+    const live = await loadLive(target);
+    if (!live) { state.live = false; renderNote(); return; }
+    state.live = true;
+    setCity(live, true);
+  })();
+})();
+</script>
+
+</body>
+</html>
