@@ -547,7 +547,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
   }
   const legsAll = (f) => [0, 1, 2, 3].map((i) => legCol(i, f)).join("");
   const eyes = () => `<g class="eyes"><rect x="72" y="94" width="12" height="24" rx="2.5" fill="${INK}"/><rect x="156" y="94" width="12" height="24" rx="2.5" fill="${INK}"/></g>`;
-  const smile = () => L("M110 106 Q120 114 130 106", 3);
+  const smile = () => L("M110 115 Q120 123 130 115", 3);
   const sweat = () => `<g class="sweat"><path d="M204 68 Q211 79 211 84 A7 7 0 0 1 197 84 Q197 79 204 68 Z" fill="#9cd0f0" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/></g>`;
 
   const torso = (fill, top, bottom) => R(43, top, 154, bottom - top, fill, 7);
@@ -556,11 +556,11 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
   const mitten = (c, x = 13) => R(x, 115.5, 20, 29, c, 8);
 
   const scarf = (c, s) =>
-    R(39, 117, 162, 15, c, 7) +
-    P("M146 129 L144 170 L161 171.5 L162 129 Z", c) +
-    L("M144.6 145 L161.6 146 M144.2 157 L161.3 158", 3.2, s, 'stroke-linecap="butt"') +
-    L("M146.5 173 L146 179 M152.8 173.5 L152.6 179.5 M159 173.8 L159 179.8", 2);
-  const collar = (c) => R(41, 116, 158, 19, c, 9.5);
+    R(39, 125, 162, 15, c, 7) +
+    P("M146 137 L144 178 L161 179.5 L162 137 Z", c) +
+    L("M144.6 153 L161.6 154 M144.2 165 L161.3 166", 3.2, s, 'stroke-linecap="butt"') +
+    L("M146.5 181 L146 187 M152.8 181.5 L152.6 187.5 M159 181.8 L159 187.8", 2);
+  const collar = (c) => R(41, 124, 158, 19, c, 9.5);
   const beanie = (c, cuff, pom) =>
     P("M46 86 Q46 42 120 40 Q194 42 194 86 Z", c) +
     L("M78 54 Q76 66 78 78 M100 47 Q98 60 100 76 M140 47 Q142 60 140 76 M162 54 Q164 66 162 78", 1.8, cuff) +
@@ -605,32 +605,32 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
 
     if (t === "bundle") {
       f = { leg: C.pufferPants, foot: "boot", footC: C.pufferBoots, bootTop: 176 };
-      top = torso(C.puffer, 122, 182) + L("M44 142 L196 142 M44 162 L196 162", 2.2) + L("M120 135 L120 181", 2);
+      top = torso(C.puffer, 126, 182) + L("M44 142 L196 142 M44 162 L196 162", 2.2) + L("M120 135 L120 181", 2);
       sleeves = both(R(23, 114.5, 30, 31, C.puffer, 9) + L("M38 116 L38 144", 2) + mitten(C.mitten));
       grip = mitten(C.mitten, 207);
       neck = collar(C.puffer);
       if (!umb) hat = beanie(C.hat, C.hatCuff, C.pom);
     } else if (raincoat) {
       f = { leg: C.darkPants, foot: "boot", footC: C.rainBoots, bootTop: 172 };
-      top = torso(C.rain, 122, 180) + L("M120 124 L120 180", 2) +
+      top = torso(C.rain, 126, 180) + L("M120 128 L120 180", 2) +
         `<rect x="124" y="138" width="10" height="4.5" rx="2" fill="${C.rainDark}"/><rect x="124" y="152" width="10" height="4.5" rx="2" fill="${C.rainDark}"/><rect x="124" y="166" width="10" height="4.5" rx="2" fill="${C.rainDark}"/>` +
         P("M54 156 L80 156 L80 163 Q67 166 54 163 Z", C.rain) + P("M160 156 L186 156 L186 163 Q173 166 160 163 Z", C.rain);
       sleeves = both(sleeveLong(C.rain));
       if (t === "coat") neck = scarf(C.scarfCream, C.scarfRed);
     } else if (t === "coat") {
       f = { leg: C.darkPants, foot: "boot", footC: C.brownBoots, bootTop: 176 };
-      top = torso(C.coat, 124, 184) + L("M102 124 L120 148 L138 124", 2.2) + L("M121 148 L122 183", 2, C.coatLine) +
+      top = torso(C.coat, 126, 184) + L("M102 126 L120 150 L138 126", 2.2) + L("M121 148 L122 183", 2, C.coatLine) +
         `<circle cx="131" cy="158" r="3" fill="${C.coatBtn}"/><circle cx="131" cy="173" r="3" fill="${C.coatBtn}"/>` +
         L("M58 168 L82 169 M158 169 L182 168", 2.4, C.coatLine);
       sleeves = both(sleeveLong(C.coat, C.coatLine));
       neck = scarf(C.scarfCream, C.scarfRed);
     } else if (t === "sweater") {
-      top = torso("url(#knit)", 124, 172) + L("M44 164 L196 164", 2);
+      top = torso("url(#knit)", 126, 172) + L("M44 164 L196 164", 2);
       sleeves = both(sleeveLong("url(#knit)"));
       neck = scarf(C.mustard, C.mustardStripe);
     } else if (t === "light") {
       f = { leg: C.jeans, foot: "sneaker", footC: C.white };
-      top = torso(C.denim, 124, 172) + R(104, 123, 32, 49, C.tee, 2) +
+      top = torso(C.denim, 126, 172) + R(104, 125, 32, 47, C.tee, 2) +
         `<rect x="58" y="134" width="20" height="13" rx="2" fill="none" stroke="${C.denimDark}" stroke-width="2"/><rect x="162" y="134" width="20" height="13" rx="2" fill="none" stroke="${C.denimDark}" stroke-width="2"/>` +
         L("M45 164 L102 164 M138 164 L195 164", 2, C.denimDark);
       sleeves = both(sleeveLong(C.denim, C.denimDark));
@@ -646,7 +646,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
         foot: umb ? "boot" : hot ? "sandal" : "sneaker",
         footC: umb ? C.rainBoots : hot ? C.sandal : C.white, bootTop: 176
       };
-      top = torso(hot ? C.yellow : C.sky, 124, 168);
+      top = torso(hot ? C.yellow : C.sky, 126, 168);
       sleeves = both(sleeveShort(hot ? C.yellow : C.sky));
       if (!umb && hot) hat = bucketHat(C.straw, C.hatBand);
       glasses = !umb && (hot || o.sunny);
