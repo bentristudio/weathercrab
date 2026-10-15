@@ -5,9 +5,10 @@ A tiny weather app: a little crab checks the forecast and puts on the right laye
 Idea from [@pauline_makes](https://x.com/pauline_makes/status/2042608561197297942)' weather bunny.
 
 - Live forecasts for yesterday plus the next 14 days from [Open-Meteo](https://open-meteo.com). No API key needed. "view more dates" shows the next two weeks at once as a calendar.
+- Opens on your own location: the browser asks once, and if location is off it makes a rough guess from your network instead (via BigDataCloud). If you picked a specific city last time, it opens on that city.
 - Search any city, or use your location. The header then shows the town you're in underneath, like "my location (delray beach)". Town names come from [BigDataCloud](https://www.bigdatacloud.com)'s free reverse-geocoding API.
 - 221 places are saved in the page (every US state capital, the biggest US cities, more cities in California, Florida, New York and Texas, and a few world cities including Niamey, Niger). They load instantly and serve as a fallback forecast if the weather service can't be reached.
-- The exact local time ("it's 2:51pm") above an hourly strip under the high and low. Tap any hour and the crab dresses for that hour (today starts on "now"; at night it skips the sunglasses and the glow dims).
+- The current temperature ("now 84°", plus "feels like" when it differs) right under the high and low, then the exact local time ("it's 2:51pm") above an hourly strip. Tap any hour and the crab dresses for that hour (today starts on "now"; at night it skips the sunglasses and the glow dims).
 - The crab moves with the weather: it shivers in the cold, scuttles when it's mild, hops in the sun, melts in the heat and leans into the wind.
 - At 100°F and up it changes into a swimsuit and sunglasses. At 0°F and below it wears every layer it owns: a fur-hooded parka over a puffer, a chunky scarf, big mittens and fur-lined snow boots.
 - When it's raining, drizzling, snowing or storming, it says how long for, like "thunderstorm for the next 23 minutes" (15-minute forecast data for the next few hours, hourly after that).
