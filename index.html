@@ -13,8 +13,8 @@
 <meta property="og:description" content="A little crab checks the forecast and dresses in the right layers for the weather.">
 <meta property="og:type" content="website">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="manifest" href="site.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
+<link rel="manifest" href="site.webmanifest?v=2">
 <style>
 html { box-sizing: border-box; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 body { margin: 0; }
@@ -1464,7 +1464,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
       updateInstall();
       return;
     }
-    $("#installIcon").innerHTML = crabSVG({ tier: "sweater", rain: false, snow: false, sunny: false }, { flat: true });
+    $("#installIcon").innerHTML = crabSVG({ tier: "hot", rain: false, snow: false, sunny: true }, { flat: true });
     $("#installSteps").innerHTML = isIOS
       ? `<li><span>tap the share button ${SHARE_IC} in your browser's toolbar</span></li>
          <li><span>scroll down and tap ${PLUS_IC} <b>Add to Home Screen</b></span></li>
@@ -1493,7 +1493,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--focus); out
       <div class="w w-medium"><div class="wbox"><div class="wglow"></div><div class="wcat">${cat}</div><span class="wt l">${temp(d.min)}</span><span class="wt r">${temp(d.max)}</span></div><label>weathercrab</label></div>
       <div class="w w-small"><div class="wbox"><div class="wglow"></div><div class="wcat">${cat}</div><span class="wt l">${temp(d.min)}</span><span class="wt r">${temp(d.max)}</span></div><label>weathercrab</label></div>
       <div class="w-icons">
-        <div class="w"><div class="app-icon">${crabSVG({ tier: "sweater", rain: false, snow: false, sunny: false }, { flat: true })}</div><label>weathercrab</label></div>
+        <div class="w"><div class="app-icon">${crabSVG({ tier: "hot", rain: false, snow: false, sunny: true }, { flat: true })}</div><label>weathercrab</label></div>
         <div class="w"><div class="app-icon ghost"></div><label>&nbsp;</label></div>
         <div class="w"><div class="app-icon ghost"></div><label>&nbsp;</label></div>
         <div class="w"><div class="app-icon ghost"></div><label>&nbsp;</label></div>
