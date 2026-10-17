@@ -1,21 +1,36 @@
-# weathercrab
+# good food near me
 
-A tiny weather app: a little crab checks the forecast and puts on the right layers for the day. Puffer and beanie when it's freezing, a coat and scarf when it's cold, a raincoat and umbrella when it rains, sunglasses and a sun hat when it's hot.
+weathercrab's food-loving sibling: a little crab shows you the top restaurants in a city. Each spot is drawn as its own storefront with the crab out front in an apron, holding up the dish you're looking at.
 
-Idea from [@pauline_makes](https://x.com/pauline_makes/status/2042608561197297942)' weather bunny.
-
-- Live forecasts for yesterday plus the next 14 days from [Open-Meteo](https://open-meteo.com). No API key needed. "view more dates" shows the next two weeks at once as a calendar.
-- Opens on your own location: the browser asks once, and if location is off it makes a rough guess from your network instead (via BigDataCloud). If you picked a specific city last time, it opens on that city.
-- Search any city, or use your location. The header then shows the town you're in underneath, like "my location (delray beach)". Town names come from [BigDataCloud](https://www.bigdatacloud.com)'s free reverse-geocoding API.
-- 221 places are saved in the page (every US state capital, the biggest US cities, more cities in California, Florida, New York and Texas, and a few world cities including Niamey, Niger). They load instantly and serve as a fallback forecast if the weather service can't be reached.
-- The current temperature ("now 84°", plus "feels like" when it differs) right under the high and low, then the exact local time ("it's 2:51pm") above an hourly strip. Tap any hour and the crab dresses for that hour (today starts on "now"; at night it skips the sunglasses and the glow dims).
-- The crab moves with the weather: it shivers in the cold, scuttles when it's mild, hops in the sun, melts in the heat and leans into the wind.
-- At 100°F and up it changes into a swimsuit and sunglasses. At 0°F and below it wears every layer it owns: a fur-hooded parka over a puffer, a chunky scarf, big mittens and fur-lined snow boots.
-- When it's raining, drizzling, snowing or storming, it says how long for, like "thunderstorm for the next 23 minutes" (15-minute forecast data for the next few hours, hourly after that).
-- °F / °C switch, swipe or arrow keys between days, and a widget preview.
-- On phones, the crab button at the top adds weathercrab to the home screen: Android shows its install prompt, iPhone gets three quick steps (Share → Add to Home Screen → Add). It opens full screen like an app and still opens offline.
+- **193 cities**: all five New York boroughs, Florida (Delray Beach, Boca Raton, Miami and more), Southern California (Mission Viejo, Irvine & Costa Mesa, Newport Beach, Laguna Beach and more), Connecticut & New Jersey, all 50 state capitals plus Washington, DC, the biggest US cities, 24 more food towns, and 58 cities around the world.
+- **1,847 saved spots**: up to 25 per city, fewer in small towns. Each has a neighborhood, price level, star rating and its best-known dishes.
+- **Pick a cuisine** next to the city: pizza, tacos, sushi, bbq, delis and 20 more.
+- **Swipe the menu**: each dish has its price, a tag (the signature, spicy, vegetarian…) and a short description. The crab holds up each dish and reacts to it: it hops for the signature, sweats for spicy food and gets nervous holding crab claws.
+- **Every storefront is different**: brick in New York, pastel with a palm tree in Miami, iron balconies in New Orleans, stone in Paris, adobe in Santa Fe. Lanterns, string lights, a chimney for bbq or a life ring for seafood depend on the cuisine.
+- **Use my location** in the city picker finds where you are and opens the nearest saved city, labeled "near you" (or "closest to you, 40 mi" when you're far from all of them). It uses the browser's location if you allow it, otherwise a rough guess from your network via [BigDataCloud](https://www.bigdatacloud.com)'s free lookup. If you used it last time, the site opens near you again.
+- **View more top spots** opens a grid of mini storefronts.
+- **The crab button** at the top left adds the app to your home screen: Android and Chrome show their install prompt, iPhone gets three quick steps (Share → Add to Home Screen → Add), and computers get the steps for Chrome, Edge and Safari. It opens full screen like an app and works offline.
 
 It is one static `index.html` with no build step and no dependencies.
+
+## How the rankings work
+
+The saved picks come from Claude's own knowledge, not from a live data source. Claude chose and ordered them from what it learned about each city's food scene: Michelin stars and Bib Gourmands, James Beard awards, critics' and local best-of lists, how long a place has been loved, and how often it comes up as a must-visit. It also aimed for a spread of neighborhoods, cuisines and price levels.
+
+- It's judgment, not a formula. No reviews were pulled or averaged, and #8 vs. #11 doesn't mean much.
+- Star ratings are Claude's estimates of each place's typical score on big review sites, not live Google or Yelp numbers.
+- Prices come from Claude's latest menu info and are before taxes, tips and fees. Menus change and places close, so check before you go.
+
+The page also explains this behind the **?** button.
+
+## What only works where
+
+- **Use my location** works on this standalone site. Inside a Claude artifact the browser blocks location, so the button is hidden there.
+- **Live scouting** only works inside Claude (see below).
+
+## Live scouting only works inside Claude
+
+When the page is opened as a Claude artifact, Claude can scout cities that aren't saved, a full 25 for any cuisine, 25 more spots at a time (up to 300) and fuller menus. On this standalone site those features are hidden, because they need Claude. Everything saved works the same.
 
 ## Files
 
@@ -27,10 +42,11 @@ It is one static `index.html` with no build step and no dependencies.
 | `icon-192.png`, `icon-512.png` | Icons for Android and installed web apps |
 | `site.webmanifest` | Lets the site be added to a home screen as an app |
 | `sw.js` | Service worker: makes the site installable on Android and lets it open offline |
+| `.gitignore` | Keeps `.DS_Store` and Vercel's local folder out of git |
 
 ## Deploy
 
-1. **GitHub:** create a new repository (for example `weathercrab`) at <https://github.com/new>. On the empty repo page, click **uploading an existing file**, drag in every file from this folder, and commit.
+1. **GitHub:** create a new repository (for example `good-food-near-me`) at <https://github.com/new>. On the empty repository page, click **uploading an existing file**, drag in every file from this folder, and commit. If the `.gitignore` file doesn't show in Finder, press Cmd+Shift+. to show hidden files. It's optional.
 2. **Vercel:** go to <https://vercel.com/new>, import the repository, leave **Framework Preset** on **Other** with no build command, and click **Deploy**.
 
 Every commit to the main branch redeploys automatically.
@@ -40,12 +56,21 @@ Every commit to the main branch redeploys automatically.
 ```bash
 git init
 git add .
-git commit -m "weathercrab"
+git commit -m "good food near me"
 git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/weathercrab.git
+git remote add origin https://github.com/YOUR-USERNAME/good-food-near-me.git
 git push -u origin main
 ```
 
-## Data and license notes
+## Updating the restaurants
 
-Weather data by [Open-Meteo.com](https://open-meteo.com), licensed CC BY 4.0. The page shows the credit at the bottom. Open-Meteo's free API is for non-commercial use (up to 10,000 calls a day). A commercial site needs one of their paid plans.
+All the data lives in `index.html`, in the `SAVED` object near the top of the script. Each city lists its spots as:
+
+```js
+["restaurant name", "neighborhood", "cuisine", yearOpened, priceLevel1to4, stars, "why it's great", [
+  ["dish", price, "what it is", "tag", "optional drawing"],
+  ...
+]]
+```
+
+Prices can also be `"mp"` (market price), `"set"` (part of a set menu) or `"incl"` (comes with the meal). Tags are `sig`, `spicy`, `veg`, `share`, `sweet`, `drink` or `""`.

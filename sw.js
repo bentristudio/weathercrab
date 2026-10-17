@@ -1,8 +1,8 @@
-/* weathercrab service worker: makes the site installable and lets it open offline.
+/* good food near me service worker: makes the site installable and lets it open offline.
    Pages and icons come from the network first (so new deploys show up right away)
-   and fall back to the last cached copy. Weather and font requests go straight to the network. */
-const CACHE = "weathercrab-v2";
-const SHELL = ["./", "index.html", "favicon.svg", "apple-touch-icon.png?v=2", "icon-192.png?v=2", "icon-512.png?v=2", "site.webmanifest?v=2"];
+   and fall back to the last cached copy. Font requests go straight to the network. */
+const CACHE = "goodfood-v2";
+const SHELL = ["./", "index.html", "favicon.svg?v=2", "apple-touch-icon.png?v=2", "icon-192.png?v=2", "icon-512.png?v=2", "site.webmanifest?v=2"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
