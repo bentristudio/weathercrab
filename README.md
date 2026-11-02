@@ -7,12 +7,13 @@ Idea from [@pauline_makes](https://x.com/pauline_makes/status/204260856119729794
 - Live forecasts for yesterday plus the next 14 days from [Open-Meteo](https://open-meteo.com). No API key needed. "view more dates" shows the next two weeks at once as a calendar.
 - Opens on your own location: the browser asks once, and if location is off it makes a rough guess from your network instead (via BigDataCloud). If you picked a specific city last time, it opens on that city.
 - Search any city, or use your location. The header then shows the town you're in underneath, like "my location (delray beach)". Town names come from [BigDataCloud](https://www.bigdatacloud.com)'s free reverse-geocoding API.
-- 221 places are saved in the page (every US state capital, the biggest US cities, more cities in California, Florida, New York and Texas, and a few world cities including Niamey, Niger). They load instantly and serve as a fallback forecast if the weather service can't be reached.
+- 221 places are saved in the page (every US state capital, the biggest US cities, more cities in California, Florida, New York and Texas, and a few world cities including Niamey, Niger). They load instantly, and their saved daily forecast is the fallback if the weather service can't be reached.
+- **hottest** and **coldest** buttons check the live temperature at 48 of the world's hottest spots (Death Valley, Kuwait, the Sahara and Sahel, Jacobabad, Australia's outback, the Gran Chaco…) and 21 of its coldest (Vostok, Dome A, the South Pole, Greenland's Summit, Oymyakon, Eureka…) and jump to whichever is the extreme right now.
 - The current temperature ("now 84°", plus "feels like" when it differs) right under the high and low, then the exact local time ("it's 2:51pm") above an hourly strip. Tap any hour and the crab dresses for that hour (today starts on "now"; at night it skips the sunglasses and the glow dims).
 - The crab moves with the weather: it shivers in the cold, scuttles when it's mild, hops in the sun, melts in the heat and leans into the wind.
 - At 100°F and up it changes into a swimsuit and sunglasses. At 0°F and below it wears every layer it owns: a fur-hooded parka over a puffer, a chunky scarf, big mittens and fur-lined snow boots.
 - When it's raining, drizzling, snowing or storming, it says how long for, like "thunderstorm for the next 23 minutes" (15-minute forecast data for the next few hours, hourly after that).
-- °F / °C switch, swipe or arrow keys between days, and a widget preview.
+- °F / °C switch, swipe or arrow keys between days, and a widget preview. Motion is smooth throughout (the crab follows your swipe, numbers roll, sheets drag to close) and turns off for anyone who has reduced motion switched on.
 - On phones, the crab button at the top adds weathercrab to the home screen: Android shows its install prompt, iPhone gets three quick steps (Share → Add to Home Screen → Add). It opens full screen like an app and still opens offline.
 
 It is one static `index.html` with no build step and no dependencies.
