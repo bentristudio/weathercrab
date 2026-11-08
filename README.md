@@ -1,6 +1,6 @@
 # weathercrab
 
-A tiny weather app: a little crab checks the forecast and puts on the right layers for the day. Puffer and beanie when it's freezing, a coat and scarf when it's cold, a raincoat and umbrella when it rains, sunglasses and a sun hat when it's hot.
+A tiny weather app: a little crab checks your forecast and gets dressed for it. Clothes are real objects here: tap an hour and the old layers get tossed while the new ones drop on and land. Puffer and beanie when it's freezing, a coat and scarf when it's cold, a raincoat and umbrella when it rains, sunglasses and a sun hat when it's hot.
 
 Idea from [@pauline_makes](https://x.com/pauline_makes/status/2042608561197297942)' weather bunny.
 
@@ -9,11 +9,13 @@ Idea from [@pauline_makes](https://x.com/pauline_makes/status/204260856119729794
 - Search any city, or use your location. The header then shows the town you're in underneath, like "my location (delray beach)". Town names come from [BigDataCloud](https://www.bigdatacloud.com)'s free reverse-geocoding API.
 - 221 places are saved in the page (every US state capital, the biggest US cities, more cities in California, Florida, New York and Texas, and a few world cities including Niamey, Niger). They load instantly, and their saved daily forecast is the fallback if the weather service can't be reached.
 - **hottest** and **coldest** buttons check the live temperature at 48 of the world's hottest spots (Death Valley, Kuwait, the Sahara and Sahel, Jacobabad, Australia's outback, the Gran Chaco…) and 21 of its coldest (Vostok, Dome A, the South Pole, Greenland's Summit, Oymyakon, Eureka…) and jump to whichever is the extreme right now.
-- The current temperature ("now 84°", plus "feels like" when it differs) right under the high and low, then the exact local time ("it's 2:51pm") above an hourly strip. Tap any hour and the crab dresses for that hour (today starts on "now"; at night it skips the sunglasses and the glow dims).
+- One big temperature with rolling digits, then "now · 2:51pm · feels like 79°" above an hourly strip. Tap any hour and the crab dresses for that hour (today starts on "now"; at night it skips the sunglasses and the glow dims).
+- A sentence that talks like a person, written from the actual forecast: "41° now. 72° by 1pm. rain at 3.", "rain from 3 to 5pm. bring the umbrella.", "wear a tee under the puffer. you'll be carrying the puffer by 10."
 - The crab moves with the weather: it shivers in the cold, scuttles when it's mild, hops in the sun, melts in the heat and leans into the wind.
 - At 100°F and up it changes into a swimsuit and sunglasses. At 0°F and below it wears every layer it owns: a fur-hooded parka over a puffer, a chunky scarf, big mittens and fur-lined snow boots.
 - When it's raining, drizzling, snowing or storming, it says how long for, like "thunderstorm for the next 23 minutes" (15-minute forecast data for the next few hours, hourly after that).
-- °F / °C switch, swipe or arrow keys between days, and a widget preview. Motion is smooth throughout (the crab follows your swipe, numbers roll, sheets drag to close) and turns off for anyone who has reduced motion switched on.
+- °F / °C switch, swipe or arrow keys between days, and a widget preview. Motion is smooth throughout (the crab follows your swipe, digits roll, panels drag to close) and turns off for anyone who has reduced motion switched on.
+- On a computer the app sits inside a phone on a soft blue-gray page. On a phone it fills the screen.
 - On phones, the crab button at the top adds weathercrab to the home screen: Android shows its install prompt, iPhone gets three quick steps (Share → Add to Home Screen → Add). It opens full screen like an app and still opens offline.
 
 It is one static `index.html` with no build step and no dependencies.
@@ -28,6 +30,7 @@ It is one static `index.html` with no build step and no dependencies.
 | `icon-192.png`, `icon-512.png` | Icons for Android and installed web apps |
 | `site.webmanifest` | Lets the site be added to a home screen as an app |
 | `sw.js` | Service worker: makes the site installable on Android and lets it open offline |
+| `og.png` | The preview image when someone shares the link |
 
 ## Deploy
 

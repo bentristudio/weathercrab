@@ -2,7 +2,7 @@
   "id": "./",
   "name": "weathercrab",
   "short_name": "weathercrab",
-  "description": "A little crab checks the forecast and dresses in the right layers for the weather.",
+  "description": "A little crab checks your forecast and gets dressed for it.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -11,17 +11,17 @@
   "theme_color": "#1b1918",
   "icons": [
     {
-      "src": "icon-192.png?v=2",
+      "src": "icon-192.png?v=3",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icon-512.png?v=2",
+      "src": "icon-512.png?v=3",
       "sizes": "512x512",
       "type": "image/png"
     },
     {
-      "src": "icon-512.png?v=2",
+      "src": "icon-512.png?v=3",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
